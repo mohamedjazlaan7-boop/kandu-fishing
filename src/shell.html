@@ -1,0 +1,379 @@
+<title>Kandu Fishing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@75..150,500..900&family=Hanken+Grotesk:wght@400;500;600;700&family=Martian+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow app column (max 760px) with a fixed bottom tab bar; the day chart is the centrepiece of Today. */
+:root {
+  --bg: #EDF3F5;
+  --surface: #FFFFFF;
+  --ink: #0D2833;
+  --muted: #587480;
+  --line: #D3E0E5;
+  --night: #E1E9EE;
+  --tide: #1E7CA6;
+  --tide-soft: #C4E2EF;
+  --bar: #A9C2CC;
+  --accent: #BF1677;
+  --accent-soft: #F7D5E7;
+  --on-accent: #FFFFFF;
+  --good: #1D7F52;
+  --scrim: rgba(8, 28, 36, 0.45);
+  --moon-dark: #2B4955;
+  --moon-lit: #FFFFFF;
+  --font-display: 'Anybody', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #061820; --surface: #0C2430; --ink: #DCECF1; --muted: #87A6B2; --line: #1B3A48;
+    --night: #08202A; --tide: #4DB6DF; --tide-soft: #123D50; --bar: #2E5465;
+    --accent: #FF5CAE; --accent-soft: #4A1834; --on-accent: #2A0717; --good: #4CC28A;
+    --scrim: rgba(0, 0, 0, 0.6); --moon-dark: #061820; --moon-lit: #E6F0F3; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #061820; --surface: #0C2430; --ink: #DCECF1; --muted: #87A6B2; --line: #1B3A48;
+  --night: #08202A; --tide: #4DB6DF; --tide-soft: #123D50; --bar: #2E5465;
+  --accent: #FF5CAE; --accent-soft: #4A1834; --on-accent: #2A0717; --good: #4CC28A;
+  --scrim: rgba(0, 0, 0, 0.6); --moon-dark: #061820; --moon-lit: #E6F0F3; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; color: inherit; }
+a { color: var(--tide); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.app { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 8px calc(96px + env(safe-area-inset-bottom, 0px)); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px 12px; }
+.brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand svg { flex: none; }
+.wordmark { font-family: var(--font-display); font-stretch: 140%; font-weight: 850; font-size: 19px; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1; }
+.loc-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px 7px 10px; cursor: pointer; font-weight: 600; font-size: 14px; max-width: 60%; min-width: 0; }
+.loc-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-btn svg { flex: none; color: var(--accent); }
+
+.tab[hidden] { display: none; }
+.stack { display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.card h2, .h2 { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.sub { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+.fine { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Date bar */
+.datebar { display: flex; align-items: center; gap: 6px; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; flex: none; }
+.date-label { flex: 1; min-width: 0; text-align: center; font-weight: 700; font-size: 16px; }
+.date-label small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+.pill-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; flex: none; }
+.pill-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Rating block */
+.rating { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: center; padding-block: 6px 2px; }
+.rating-num { font-family: var(--font-display); font-stretch: 150%; font-weight: 900; font-size: 64px; line-height: 0.9; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rating-num small { font-size: 22px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+.rating-meta { min-width: 0; display: grid; gap: 4px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.rating-label { font-family: var(--font-display); font-stretch: 120%; font-weight: 800; font-size: 24px; line-height: 1.1; }
+.pips { display: flex; gap: 4px; }
+.pips i { width: 18px; height: 6px; border-radius: 3px; background: var(--line); display: block; }
+.pips i.on { background: var(--accent); }
+.rating p { grid-column: 1 / -1; color: var(--ink); max-width: 62ch; }
+
+/* Now strip */
+.now { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 10px 14px; border-radius: 12px; background: var(--tide-soft); }
+.now b { font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+.now span { font-size: 14px; }
+
+/* Chart */
+#chart { width: 100%; min-height: 236px; }
+#chart svg { display: block; width: 100%; height: auto; }
+.c-night { fill: var(--night); }
+.c-plot { fill: var(--surface); }
+.c-tide { fill: var(--tide-soft); }
+.c-tide-line { fill: none; stroke: var(--tide); stroke-width: 2; }
+.c-dot { fill: var(--surface); stroke: var(--tide); stroke-width: 2; }
+.c-major { fill: var(--accent); }
+.c-minor { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+.c-bar { fill: var(--bar); }
+.c-bar-hot { fill: var(--accent); }
+.c-grid { stroke: var(--line); stroke-width: 1; }
+.c-now { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.c-lbl { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+.c-val { font-family: var(--font-mono); font-size: 10px; font-weight: 500; fill: var(--ink); }
+.c-band-major { font-family: var(--font-body); font-size: 10px; font-weight: 700; fill: var(--on-accent); }
+.c-band-minor { font-family: var(--font-body); font-size: 10px; font-weight: 700; fill: var(--accent); }
+.c-now-lbl { font-family: var(--font-body); font-size: 10px; font-weight: 700; fill: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.sw.major { background: var(--accent); }
+.sw.minor { background: var(--accent-soft); border: 1px solid var(--accent); }
+.sw.tide { background: var(--tide-soft); border-top: 2px solid var(--tide); border-radius: 2px; }
+.sw.night { background: var(--night); border: 1px solid var(--line); }
+
+/* Windows */
+.windows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.windows li { display: grid; grid-template-columns: 7.2em 1fr; gap: 12px; padding-block: 10px; border-top: 1px solid var(--line); align-items: start; }
+.windows li:first-child { border-top: 0; padding-top: 2px; }
+.win-time { font-family: var(--font-mono); font-weight: 600; font-size: 13px; line-height: 1.5; }
+.win-time small { display: block; font-family: var(--font-body); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.grade-Prime { color: var(--accent); }
+.grade-Good { color: var(--good); }
+.grade-Fair { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.chip { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); white-space: nowrap; }
+
+/* Two-column cards */
+.grid2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; margin: 0; }
+.kv dt { color: var(--muted); font-size: 14px; }
+.kv dd { margin: 0; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.tide-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 7px; }
+.tide-rows li { display: grid; grid-template-columns: 3.4em 1fr auto; gap: 10px; align-items: baseline; }
+.tide-rows .t-type { font-weight: 700; font-size: 13px; }
+.tide-rows .t-type.High { color: var(--tide); }
+.tide-rows .t-type.Low { color: var(--muted); }
+.phase-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.phase-row b { display: block; font-size: 15px; }
+
+/* Week */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.day-btn { border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 8px 2px; cursor: pointer; display: grid; justify-items: center; gap: 4px; }
+.day-btn:hover { background: var(--bg); }
+.day-btn[aria-current="date"] { border-color: var(--ink); background: var(--bg); }
+.day-btn .dn { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.day-btn .dd { font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
+.mini-pips { display: flex; gap: 2px; }
+.mini-pips i { width: 4px; height: 4px; border-radius: 2px; background: var(--line); display: block; }
+.mini-pips i.on { background: var(--accent); }
+
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); font-weight: 600; font-size: 14px; background: var(--bg); }
+
+/* Buttons and forms */
+.btn { border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 700; font-size: 15px; cursor: pointer; background: var(--accent); color: var(--on-accent); }
+.btn.quiet { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.btn.danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn-sm { padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.page-head h1 { font-family: var(--font-display); font-stretch: 130%; font-weight: 850; font-size: 28px; line-height: 1.05; }
+.note { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none; }
+.note.local::before { background: var(--bar); }
+.install { border-color: var(--accent); }
+.install p { max-width: 62ch; }
+
+.field { display: grid; gap: 5px; }
+.field label, .field .lbl { font-size: 13px; font-weight: 600; }
+.field .hint { font-size: 12px; color: var(--muted); }
+.field .hint.ok { color: var(--good); }
+.field .hint.err { color: var(--accent); }
+input[type=text], input[type=number], input[type=datetime-local], select, textarea {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0;
+}
+textarea { min-height: 72px; resize: vertical; }
+.form { display: grid; gap: 14px; }
+.form .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* Lists */
+.list { display: grid; gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.item-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.item-title { font-weight: 700; font-size: 16.5px; min-width: 0; overflow-wrap: anywhere; }
+.badge { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 6px; background: var(--tide-soft); color: var(--ink); white-space: nowrap; }
+.meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.item p { overflow-wrap: anywhere; }
+.tip { font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--bg); }
+.tip b { font-weight: 700; }
+.empty { text-align: left; padding: 22px 18px; border: 1.5px dashed var(--line); border-radius: 14px; display: grid; gap: 10px; justify-items: start; }
+.empty h3 { font-size: 17px; }
+.empty p { color: var(--muted); max-width: 52ch; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px 16px; }
+.stat b { display: block; font-family: var(--font-display); font-stretch: 125%; font-weight: 800; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
+.stat span { font-size: 12px; color: var(--muted); }
+#spotMap svg { display: block; width: 100%; height: auto; }
+.m-grid { stroke: var(--line); stroke-width: 1; }
+.m-spot { fill: var(--accent); }
+.m-home { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.m-lbl { font-family: var(--font-body); font-size: 11px; font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.m-scale { stroke: var(--muted); stroke-width: 1.5; }
+.m-scale-lbl { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+
+/* Plan */
+.plan { margin-top: 12px; padding: 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); font-size: 14.5px; display: grid; gap: 4px; }
+.plan .ph { font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-top: 8px; }
+.plan .ph:first-child { margin-top: 0; }
+
+/* Bottom tabs */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs-inner { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); padding-inline: 8px; }
+.tab-btn { border: 0; background: transparent; padding: 9px 4px 10px; display: grid; justify-items: center; gap: 2px; cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.03em; }
+.tab-btn[aria-selected="true"] { color: var(--accent); }
+
+/* Sheet */
+.sheet-wrap { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 560px; max-height: 92vh; overflow: auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet-head h2 { font-family: var(--font-display); font-stretch: 125%; font-weight: 800; font-size: 21px; }
+@media (min-width: 640px) { .sheet-wrap { align-items: center; padding: 24px; } .sheet { border-radius: 18px; } }
+.loc-list { display: grid; gap: 6px; }
+.loc-opt { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; }
+.loc-opt[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.loc-opt span { font-weight: 600; }
+.loc-opt small { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 50; background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: rise .18s ease-out; }
+  @keyframes rise { from { transform: translateY(16px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 15c2.2-2 4.3-2 6.4 0s4.3 2 6.4 0 4.3-2 6.4 0" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="4.6" r="1.05" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M15 5.7v5.8a2.6 2.6 0 0 1-5.2 0l1.3 1.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wordmark">Kandu</span>
+    </div>
+    <button class="loc-btn" id="locBtn" type="button" aria-label="Change location">
+      <svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><path d="M7 15.5s5.5-5.2 5.5-9A5.5 5.5 0 0 0 1.5 6.5c0 3.8 5.5 9 5.5 9z" fill="currentColor"/><circle cx="7" cy="6.5" r="2" fill="var(--surface)"/></svg>
+      <span id="locName">Malé</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="tab stack" id="tab-today" aria-label="Today">
+      <div class="datebar">
+        <button class="icon-btn" id="prevDay" type="button" aria-label="Previous day"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 2 8l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="date-label" id="dateLabel" aria-live="polite"></div>
+        <button class="icon-btn" id="nextDay" type="button" aria-label="Next day"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="m2 2 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="pill-btn" id="todayBtn" type="button">Today</button>
+      </div>
+
+      <div class="card install" id="installTip" hidden>
+        <div class="card-head"><h2>Install Kandu on your phone</h2></div>
+        <p id="installText"></p>
+        <div class="row" style="margin-top:10px"><button class="btn btn-sm quiet" id="installDismiss" type="button">Got it</button></div>
+      </div>
+
+      <div class="now" id="nowCard" hidden></div>
+
+      <div class="rating" id="rating"></div>
+
+      <div class="card">
+        <div class="card-head"><h2>Bite times and tide</h2><span class="sub">Maldives time</span></div>
+        <div id="chart" role="img" aria-label="Chart of solunar periods, tide height and bite strength across the day"></div>
+        <div class="legend">
+          <span><i class="sw major"></i>Major period</span>
+          <span><i class="sw minor"></i>Minor period</span>
+          <span><i class="sw tide"></i>Tide height</span>
+          <span><i class="sw night"></i>Night</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Best windows</h2></div>
+        <ol class="windows" id="windows"></ol>
+        <div id="planArea" hidden>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-sm" id="planBtn" type="button">Ask Claude for a trip plan</button>
+            <button class="btn btn-sm quiet" id="planStop" type="button" hidden>Stop</button>
+          </div>
+          <div class="plan" id="planOut" hidden></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>Tides</h2><span class="sub" id="tideRange"></span></div>
+          <ul class="tide-rows" id="tideList"></ul>
+          <p class="fine" id="tideNote"></p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Sun and moon</h2></div>
+          <div class="phase-row" id="phaseRow"></div>
+          <dl class="kv" id="skyList"></dl>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Week ahead</h2><span class="sub">Tap a day</span></div>
+        <div class="week" id="week"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Wind and swell</h2></div>
+        <p class="fine" style="color:var(--ink)">This app doesn't pull live weather. Check wind and swell for your location before heading out.</p>
+        <div class="links">
+          <a class="link-btn" id="windyLink" href="https://www.windy.com/" target="_blank" rel="noopener">Windy forecast</a>
+          <a class="link-btn" href="https://www.meteorology.gov.mv/" target="_blank" rel="noopener">Maldives Meteorological Service</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab stack" id="tab-spots" aria-label="Spots" hidden>
+      <div class="page-head"><h1>Spots</h1><button class="btn btn-sm" id="addSpotBtn" type="button">Add spot</button></div>
+      <p class="note" id="spotsNote">Loading saved spots…</p>
+      <div class="card" id="spotMapCard" hidden>
+        <div class="card-head"><h2>Spot plot</h2><span class="sub" id="spotMapSub"></span></div>
+        <div id="spotMap"></div>
+      </div>
+      <div class="list" id="spotList"></div>
+    </section>
+
+    <section class="tab stack" id="tab-log" aria-label="Catch log" hidden>
+      <div class="page-head"><h1>Catch log</h1><button class="btn btn-sm" id="addCatchBtn" type="button">Log a catch</button></div>
+      <p class="note" id="logNote">Loading catch log…</p>
+      <div class="card" id="statsCard" hidden>
+        <div class="card-head"><h2>Your patterns</h2></div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="list" id="catchList"></div>
+      <div class="card" id="backupCard" hidden>
+        <div class="card-head"><h2>Backup</h2></div>
+        <p class="fine" style="color:var(--ink)">Your spots and catches are stored on this phone only. Save a backup file now and then, and restore it on a new phone.</p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-sm quiet" id="exportBtn" type="button">Save backup file</button>
+          <label class="btn btn-sm quiet" for="importFile" style="display:inline-block">Restore from file</label>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <div class="tabs-inner" role="tablist">
+      <button class="tab-btn" role="tab" data-tab="today" aria-selected="true" type="button">
+        <svg width="24" height="20" viewBox="0 0 24 20" aria-hidden="true"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3.5-2.4 5-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>Today</button>
+      <button class="tab-btn" role="tab" data-tab="spots" aria-selected="false" type="button">
+        <svg width="24" height="20" viewBox="0 0 24 20" aria-hidden="true"><path d="M12 19s6-5.6 6-10A6 6 0 0 0 6 9c0 4.4 6 10 6 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9" r="2" fill="currentColor"/></svg>Spots</button>
+      <button class="tab-btn" role="tab" data-tab="log" aria-selected="false" type="button">
+        <svg width="24" height="20" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 10c3-5 9-6.5 14-3l4-3v12l-4-3c-5 3.5-11 2-14-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>Log</button>
+    </div>
+  </nav>
+
+  <div class="sheet-wrap" id="sheetWrap" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-head"><h2 id="sheetTitle"></h2><button class="icon-btn" id="sheetClose" type="button" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+      <div id="sheetBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script>
+/*CORE*/
+</script>
+<script>
+/*APP*/
+</script>

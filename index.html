@@ -1,0 +1,1435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Fishing planner for the Maldives: tide times for every atoll, solunar bite windows, sunrise and moon times, GPS spots and a catch log. Works offline.">
+<meta name="theme-color" content="#EDF3F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#061820" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kandu">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Kandu Fishing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@75..150,500..900&family=Hanken+Grotesk:wght@400;500;600;700&family=Martian+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow app column (max 760px) with a fixed bottom tab bar; the day chart is the centrepiece of Today. */
+:root {
+  --bg: #EDF3F5;
+  --surface: #FFFFFF;
+  --ink: #0D2833;
+  --muted: #587480;
+  --line: #D3E0E5;
+  --night: #E1E9EE;
+  --tide: #1E7CA6;
+  --tide-soft: #C4E2EF;
+  --bar: #A9C2CC;
+  --accent: #BF1677;
+  --accent-soft: #F7D5E7;
+  --on-accent: #FFFFFF;
+  --good: #1D7F52;
+  --scrim: rgba(8, 28, 36, 0.45);
+  --moon-dark: #2B4955;
+  --moon-lit: #FFFFFF;
+  --font-display: 'Anybody', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #061820; --surface: #0C2430; --ink: #DCECF1; --muted: #87A6B2; --line: #1B3A48;
+    --night: #08202A; --tide: #4DB6DF; --tide-soft: #123D50; --bar: #2E5465;
+    --accent: #FF5CAE; --accent-soft: #4A1834; --on-accent: #2A0717; --good: #4CC28A;
+    --scrim: rgba(0, 0, 0, 0.6); --moon-dark: #061820; --moon-lit: #E6F0F3; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #061820; --surface: #0C2430; --ink: #DCECF1; --muted: #87A6B2; --line: #1B3A48;
+  --night: #08202A; --tide: #4DB6DF; --tide-soft: #123D50; --bar: #2E5465;
+  --accent: #FF5CAE; --accent-soft: #4A1834; --on-accent: #2A0717; --good: #4CC28A;
+  --scrim: rgba(0, 0, 0, 0.6); --moon-dark: #061820; --moon-lit: #E6F0F3; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; color: inherit; }
+a { color: var(--tide); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.app { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 8px calc(96px + env(safe-area-inset-bottom, 0px)); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px 12px; }
+.brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand svg { flex: none; }
+.wordmark { font-family: var(--font-display); font-stretch: 140%; font-weight: 850; font-size: 19px; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1; }
+.loc-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px 7px 10px; cursor: pointer; font-weight: 600; font-size: 14px; max-width: 60%; min-width: 0; }
+.loc-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-btn svg { flex: none; color: var(--accent); }
+
+.tab[hidden] { display: none; }
+.stack { display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.card h2, .h2 { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.sub { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+.fine { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Date bar */
+.datebar { display: flex; align-items: center; gap: 6px; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; flex: none; }
+.date-label { flex: 1; min-width: 0; text-align: center; font-weight: 700; font-size: 16px; }
+.date-label small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+.pill-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; flex: none; }
+.pill-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Rating block */
+.rating { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: center; padding-block: 6px 2px; }
+.rating-num { font-family: var(--font-display); font-stretch: 150%; font-weight: 900; font-size: 64px; line-height: 0.9; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rating-num small { font-size: 22px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+.rating-meta { min-width: 0; display: grid; gap: 4px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.rating-label { font-family: var(--font-display); font-stretch: 120%; font-weight: 800; font-size: 24px; line-height: 1.1; }
+.pips { display: flex; gap: 4px; }
+.pips i { width: 18px; height: 6px; border-radius: 3px; background: var(--line); display: block; }
+.pips i.on { background: var(--accent); }
+.rating p { grid-column: 1 / -1; color: var(--ink); max-width: 62ch; }
+
+/* Now strip */
+.now { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 10px 14px; border-radius: 12px; background: var(--tide-soft); }
+.now b { font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+.now span { font-size: 14px; }
+
+/* Chart */
+#chart { width: 100%; min-height: 236px; }
+#chart svg { display: block; width: 100%; height: auto; }
+.c-night { fill: var(--night); }
+.c-plot { fill: var(--surface); }
+.c-tide { fill: var(--tide-soft); }
+.c-tide-line { fill: none; stroke: var(--tide); stroke-width: 2; }
+.c-dot { fill: var(--surface); stroke: var(--tide); stroke-width: 2; }
+.c-major { fill: var(--accent); }
+.c-minor { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+.c-bar { fill: var(--bar); }
+.c-bar-hot { fill: var(--accent); }
+.c-grid { stroke: var(--line); stroke-width: 1; }
+.c-now { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.c-lbl { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+.c-val { font-family: var(--font-mono); font-size: 10px; font-weight: 500; fill: var(--ink); }
+.c-band-major { font-family: var(--font-body); font-size: 10px; font-weight: 700; fill: var(--on-accent); }
+.c-band-minor { font-family: var(--font-body); font-size: 10px; font-weight: 700; fill: var(--accent); }
+.c-now-lbl { font-family: var(--font-body); font-size: 10px; font-weight: 700; fill: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.sw.major { background: var(--accent); }
+.sw.minor { background: var(--accent-soft); border: 1px solid var(--accent); }
+.sw.tide { background: var(--tide-soft); border-top: 2px solid var(--tide); border-radius: 2px; }
+.sw.night { background: var(--night); border: 1px solid var(--line); }
+
+/* Windows */
+.windows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.windows li { display: grid; grid-template-columns: 7.2em 1fr; gap: 12px; padding-block: 10px; border-top: 1px solid var(--line); align-items: start; }
+.windows li:first-child { border-top: 0; padding-top: 2px; }
+.win-time { font-family: var(--font-mono); font-weight: 600; font-size: 13px; line-height: 1.5; }
+.win-time small { display: block; font-family: var(--font-body); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.grade-Prime { color: var(--accent); }
+.grade-Good { color: var(--good); }
+.grade-Fair { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.chip { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); white-space: nowrap; }
+
+/* Two-column cards */
+.grid2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; margin: 0; }
+.kv dt { color: var(--muted); font-size: 14px; }
+.kv dd { margin: 0; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.tide-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 7px; }
+.tide-rows li { display: grid; grid-template-columns: 3.4em 1fr auto; gap: 10px; align-items: baseline; }
+.tide-rows .t-type { font-weight: 700; font-size: 13px; }
+.tide-rows .t-type.High { color: var(--tide); }
+.tide-rows .t-type.Low { color: var(--muted); }
+.phase-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.phase-row b { display: block; font-size: 15px; }
+
+/* Week */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.day-btn { border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 8px 2px; cursor: pointer; display: grid; justify-items: center; gap: 4px; }
+.day-btn:hover { background: var(--bg); }
+.day-btn[aria-current="date"] { border-color: var(--ink); background: var(--bg); }
+.day-btn .dn { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.day-btn .dd { font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
+.mini-pips { display: flex; gap: 2px; }
+.mini-pips i { width: 4px; height: 4px; border-radius: 2px; background: var(--line); display: block; }
+.mini-pips i.on { background: var(--accent); }
+
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); font-weight: 600; font-size: 14px; background: var(--bg); }
+
+/* Buttons and forms */
+.btn { border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 700; font-size: 15px; cursor: pointer; background: var(--accent); color: var(--on-accent); }
+.btn.quiet { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.btn.danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn-sm { padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.page-head h1 { font-family: var(--font-display); font-stretch: 130%; font-weight: 850; font-size: 28px; line-height: 1.05; }
+.note { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none; }
+.note.local::before { background: var(--bar); }
+.install { border-color: var(--accent); }
+.install p { max-width: 62ch; }
+
+.field { display: grid; gap: 5px; }
+.field label, .field .lbl { font-size: 13px; font-weight: 600; }
+.field .hint { font-size: 12px; color: var(--muted); }
+.field .hint.ok { color: var(--good); }
+.field .hint.err { color: var(--accent); }
+input[type=text], input[type=number], input[type=datetime-local], select, textarea {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0;
+}
+textarea { min-height: 72px; resize: vertical; }
+.form { display: grid; gap: 14px; }
+.form .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* Lists */
+.list { display: grid; gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.item-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.item-title { font-weight: 700; font-size: 16.5px; min-width: 0; overflow-wrap: anywhere; }
+.badge { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 6px; background: var(--tide-soft); color: var(--ink); white-space: nowrap; }
+.meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.item p { overflow-wrap: anywhere; }
+.tip { font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--bg); }
+.tip b { font-weight: 700; }
+.empty { text-align: left; padding: 22px 18px; border: 1.5px dashed var(--line); border-radius: 14px; display: grid; gap: 10px; justify-items: start; }
+.empty h3 { font-size: 17px; }
+.empty p { color: var(--muted); max-width: 52ch; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px 16px; }
+.stat b { display: block; font-family: var(--font-display); font-stretch: 125%; font-weight: 800; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
+.stat span { font-size: 12px; color: var(--muted); }
+#spotMap svg { display: block; width: 100%; height: auto; }
+.m-grid { stroke: var(--line); stroke-width: 1; }
+.m-spot { fill: var(--accent); }
+.m-home { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.m-lbl { font-family: var(--font-body); font-size: 11px; font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.m-scale { stroke: var(--muted); stroke-width: 1.5; }
+.m-scale-lbl { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+
+/* Plan */
+.plan { margin-top: 12px; padding: 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); font-size: 14.5px; display: grid; gap: 4px; }
+.plan .ph { font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-top: 8px; }
+.plan .ph:first-child { margin-top: 0; }
+
+/* Bottom tabs */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs-inner { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); padding-inline: 8px; }
+.tab-btn { border: 0; background: transparent; padding: 9px 4px 10px; display: grid; justify-items: center; gap: 2px; cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.03em; }
+.tab-btn[aria-selected="true"] { color: var(--accent); }
+
+/* Sheet */
+.sheet-wrap { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 560px; max-height: 92vh; overflow: auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet-head h2 { font-family: var(--font-display); font-stretch: 125%; font-weight: 800; font-size: 21px; }
+@media (min-width: 640px) { .sheet-wrap { align-items: center; padding: 24px; } .sheet { border-radius: 18px; } }
+.loc-list { display: grid; gap: 6px; }
+.loc-opt { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; }
+.loc-opt[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.loc-opt span { font-weight: 600; }
+.loc-opt small { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 50; background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: rise .18s ease-out; }
+  @keyframes rise { from { transform: translateY(16px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 15c2.2-2 4.3-2 6.4 0s4.3 2 6.4 0 4.3-2 6.4 0" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="4.6" r="1.05" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M15 5.7v5.8a2.6 2.6 0 0 1-5.2 0l1.3 1.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wordmark">Kandu</span>
+    </div>
+    <button class="loc-btn" id="locBtn" type="button" aria-label="Change location">
+      <svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><path d="M7 15.5s5.5-5.2 5.5-9A5.5 5.5 0 0 0 1.5 6.5c0 3.8 5.5 9 5.5 9z" fill="currentColor"/><circle cx="7" cy="6.5" r="2" fill="var(--surface)"/></svg>
+      <span id="locName">Malé</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="tab stack" id="tab-today" aria-label="Today">
+      <div class="datebar">
+        <button class="icon-btn" id="prevDay" type="button" aria-label="Previous day"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 2 8l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="date-label" id="dateLabel" aria-live="polite"></div>
+        <button class="icon-btn" id="nextDay" type="button" aria-label="Next day"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="m2 2 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="pill-btn" id="todayBtn" type="button">Today</button>
+      </div>
+
+      <div class="card install" id="installTip" hidden>
+        <div class="card-head"><h2>Install Kandu on your phone</h2></div>
+        <p id="installText"></p>
+        <div class="row" style="margin-top:10px"><button class="btn btn-sm quiet" id="installDismiss" type="button">Got it</button></div>
+      </div>
+
+      <div class="now" id="nowCard" hidden></div>
+
+      <div class="rating" id="rating"></div>
+
+      <div class="card">
+        <div class="card-head"><h2>Bite times and tide</h2><span class="sub">Maldives time</span></div>
+        <div id="chart" role="img" aria-label="Chart of solunar periods, tide height and bite strength across the day"></div>
+        <div class="legend">
+          <span><i class="sw major"></i>Major period</span>
+          <span><i class="sw minor"></i>Minor period</span>
+          <span><i class="sw tide"></i>Tide height</span>
+          <span><i class="sw night"></i>Night</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Best windows</h2></div>
+        <ol class="windows" id="windows"></ol>
+        <div id="planArea" hidden>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-sm" id="planBtn" type="button">Ask Claude for a trip plan</button>
+            <button class="btn btn-sm quiet" id="planStop" type="button" hidden>Stop</button>
+          </div>
+          <div class="plan" id="planOut" hidden></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>Tides</h2><span class="sub" id="tideRange"></span></div>
+          <ul class="tide-rows" id="tideList"></ul>
+          <p class="fine" id="tideNote"></p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Sun and moon</h2></div>
+          <div class="phase-row" id="phaseRow"></div>
+          <dl class="kv" id="skyList"></dl>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Week ahead</h2><span class="sub">Tap a day</span></div>
+        <div class="week" id="week"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Wind and swell</h2></div>
+        <p class="fine" style="color:var(--ink)">This app doesn't pull live weather. Check wind and swell for your location before heading out.</p>
+        <div class="links">
+          <a class="link-btn" id="windyLink" href="https://www.windy.com/" target="_blank" rel="noopener">Windy forecast</a>
+          <a class="link-btn" href="https://www.meteorology.gov.mv/" target="_blank" rel="noopener">Maldives Meteorological Service</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab stack" id="tab-spots" aria-label="Spots" hidden>
+      <div class="page-head"><h1>Spots</h1><button class="btn btn-sm" id="addSpotBtn" type="button">Add spot</button></div>
+      <p class="note" id="spotsNote">Loading saved spots…</p>
+      <div class="card" id="spotMapCard" hidden>
+        <div class="card-head"><h2>Spot plot</h2><span class="sub" id="spotMapSub"></span></div>
+        <div id="spotMap"></div>
+      </div>
+      <div class="list" id="spotList"></div>
+    </section>
+
+    <section class="tab stack" id="tab-log" aria-label="Catch log" hidden>
+      <div class="page-head"><h1>Catch log</h1><button class="btn btn-sm" id="addCatchBtn" type="button">Log a catch</button></div>
+      <p class="note" id="logNote">Loading catch log…</p>
+      <div class="card" id="statsCard" hidden>
+        <div class="card-head"><h2>Your patterns</h2></div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="list" id="catchList"></div>
+      <div class="card" id="backupCard" hidden>
+        <div class="card-head"><h2>Backup</h2></div>
+        <p class="fine" style="color:var(--ink)">Your spots and catches are stored on this phone only. Save a backup file now and then, and restore it on a new phone.</p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-sm quiet" id="exportBtn" type="button">Save backup file</button>
+          <label class="btn btn-sm quiet" for="importFile" style="display:inline-block">Restore from file</label>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <div class="tabs-inner" role="tablist">
+      <button class="tab-btn" role="tab" data-tab="today" aria-selected="true" type="button">
+        <svg width="24" height="20" viewBox="0 0 24 20" aria-hidden="true"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3.5-2.4 5-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>Today</button>
+      <button class="tab-btn" role="tab" data-tab="spots" aria-selected="false" type="button">
+        <svg width="24" height="20" viewBox="0 0 24 20" aria-hidden="true"><path d="M12 19s6-5.6 6-10A6 6 0 0 0 6 9c0 4.4 6 10 6 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9" r="2" fill="currentColor"/></svg>Spots</button>
+      <button class="tab-btn" role="tab" data-tab="log" aria-selected="false" type="button">
+        <svg width="24" height="20" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 10c3-5 9-6.5 14-3l4-3v12l-4-3c-5 3.5-11 2-14-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>Log</button>
+    </div>
+  </nav>
+
+  <div class="sheet-wrap" id="sheetWrap" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-head"><h2 id="sheetTitle"></h2><button class="icon-btn" id="sheetClose" type="button" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+      <div id="sheetBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script>
+/* Kandu core: time helpers, sun and moon positions, tides and bite scoring. Runs in the browser and in Node (for tools/verify.mjs). */
+const RAD = Math.PI / 180, DAY = 864e5, HOUR = 36e5, MIN = 6e4, TZ = 5 * HOUR;
+function mvParts(ms) { const d = new Date(ms + TZ); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), wd: d.getUTCDay() }; }
+function mvDayStart(ms) { const p = mvParts(ms); return Date.UTC(p.y, p.m - 1, p.d) - TZ; }
+function mvMs(y, m, d, h = 0, mi = 0) { return Date.UTC(y, m - 1, d, h, mi) - TZ; }
+const pad = n => String(n).padStart(2, '0');
+function fmtTime(ms) { const p = mvParts(ms + 30000); return pad(p.h) + ':' + pad(p.mi); }
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(ms) { const p = mvParts(ms); return WD[p.wd] + ' ' + p.d + ' ' + MO[p.m - 1]; }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* Sun and moon positions: Meeus, Astronomical Algorithms (2nd ed.), ch. 12, 25 and 47.
+   Checked against the US Naval Observatory: sunrise/sunset and moonrise/moonset/transit within 1 minute. */
+const DT_SEC = 69; // TT - UT, seconds (2026)
+function jdUT(ms) { return ms / DAY + 2440587.5; }
+const norm360 = x => ((x % 360) + 360) % 360;
+function gmst(ms) { const d = jdUT(ms) - 2451545, T = d / 36525; return norm360(280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - T * T * T / 38710000); }
+function centuriesTT(ms) { return (jdUT(ms) + DT_SEC / 86400 - 2451545) / 36525; }
+function obliquity(T) { return (23.4392911 - 0.0130042 * T) * RAD; }
+function eclToEq(lam, bet, eps) {
+  const sl = Math.sin(lam), cl = Math.cos(lam), sb = Math.sin(bet), cb = Math.cos(bet), se = Math.sin(eps), ce = Math.cos(eps);
+  return { ra: Math.atan2(sl * ce - Math.tan(bet) * se, cl), dec: Math.asin(sb * ce + cb * se * sl) };
+}
+function sunCoords(ms) {
+  const T = centuriesTT(ms);
+  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+  const M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) * RAD;
+  const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M) + (0.019993 - 0.000101 * T) * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
+  const lam = (L0 + C - 0.00569) * RAD;
+  return { lam, ...eclToEq(lam, 0, obliquity(T)) };
+}
+// Meeus table 47.A: [D, M, M', F, sum_l (1e-6 deg), sum_r (1e-3 km)]
+const MOON_LR = [[0,0,1,0,6288774,-20905355],[2,0,-1,0,1274027,-3699111],[2,0,0,0,658314,-2955968],[0,0,2,0,213618,-569925],[0,1,0,0,-185116,48888],[0,0,0,2,-114332,-3149],[2,0,-2,0,58793,246158],[2,-1,-1,0,57066,-152138],[2,0,1,0,53322,-170733],[2,-1,0,0,45758,-204586],[0,1,-1,0,-40923,-129620],[1,0,0,0,-34720,108743],[0,1,1,0,-30383,104755],[2,0,0,-2,15327,10321],[0,0,1,2,-12528,0],[0,0,1,-2,10980,79661],[4,0,-1,0,10675,-34782],[0,0,3,0,10034,-23210],[4,0,-2,0,8548,-21636],[2,1,-1,0,-7888,24208],[2,1,0,0,-6766,30824],[1,0,-1,0,-5163,-8379],[1,1,0,0,4987,-16675],[2,-1,1,0,4036,-12831],[2,0,2,0,3994,-10445],[4,0,0,0,3861,-11650],[2,0,-3,0,3665,14403],[0,1,-2,0,-2689,-7003],[2,0,-1,2,-2602,0],[2,-1,-2,0,2390,10056],[1,0,1,0,-2348,6322],[2,-2,0,0,2236,-9884],[0,1,2,0,-2120,5751],[0,2,0,0,-2069,0],[2,-2,-1,0,2048,-4950],[2,0,1,-2,-1773,4130],[2,0,0,2,-1595,0],[4,-1,-1,0,1215,-3958],[0,0,2,2,-1110,0],[3,0,-1,0,-892,3258],[2,1,1,0,-810,2616],[4,-1,-2,0,759,-1897],[0,2,-1,0,-713,-2117],[2,2,-1,0,-700,2354]];
+// Meeus table 47.B: [D, M, M', F, sum_b (1e-6 deg)]
+const MOON_B = [[0,0,0,1,5128122],[0,0,1,1,280602],[0,0,1,-1,277693],[2,0,0,-1,173237],[2,0,-1,1,55413],[2,0,-1,-1,46271],[2,0,0,1,32573],[0,0,2,1,17198],[2,0,1,-1,9266],[0,0,2,-1,8822],[2,-1,0,-1,8216],[2,0,-2,-1,4324],[2,0,1,1,4200],[2,1,0,-1,-3359],[2,-1,-1,1,2463],[2,-1,0,1,2211],[2,-1,-1,-1,2065],[0,1,-1,-1,-1870],[4,0,-1,-1,1828],[0,1,0,1,-1794],[0,0,0,3,-1749],[0,1,-1,1,-1565],[1,0,0,1,-1491],[0,1,1,1,-1475],[0,1,1,-1,-1410],[0,1,0,-1,-1344],[1,0,0,-1,-1335],[0,0,3,1,1107],[4,0,0,-1,1021],[4,0,-1,1,833]];
+function moonCoords(ms) {
+  const T = centuriesTT(ms), T2 = T * T, T3 = T2 * T, T4 = T3 * T;
+  const Lp = norm360(218.3164477 + 481267.88123421 * T - 0.0015786 * T2 + T3 / 538841 - T4 / 65194000);
+  const D = norm360(297.8501921 + 445267.1114034 * T - 0.0018819 * T2 + T3 / 545868 - T4 / 113065000) * RAD;
+  const M = norm360(357.5291092 + 35999.0502909 * T - 0.0001536 * T2 + T3 / 24490000) * RAD;
+  const Mp = norm360(134.9633964 + 477198.8675055 * T + 0.0087414 * T2 + T3 / 69699 - T4 / 14712000) * RAD;
+  const F = norm360(93.2720950 + 483202.0175233 * T - 0.0036539 * T2 - T3 / 3526000 + T4 / 863310000) * RAD;
+  const E = 1 - 0.002516 * T - 0.0000074 * T2;
+  const A1 = (119.75 + 131.849 * T) * RAD, A2 = (53.09 + 479264.290 * T) * RAD, A3 = (313.45 + 481266.484 * T) * RAD;
+  let sl = 0, sr = 0, sb = 0;
+  for (const [d, m, mp, f, l, r] of MOON_LR) {
+    const arg = d * D + m * M + mp * Mp + f * F, e = Math.abs(m) === 1 ? E : Math.abs(m) === 2 ? E * E : 1;
+    sl += l * e * Math.sin(arg); sr += r * e * Math.cos(arg);
+  }
+  for (const [d, m, mp, f, b] of MOON_B) {
+    const e = Math.abs(m) === 1 ? E : Math.abs(m) === 2 ? E * E : 1;
+    sb += b * e * Math.sin(d * D + m * M + mp * Mp + f * F);
+  }
+  const LpR = Lp * RAD;
+  sl += 3958 * Math.sin(A1) + 1962 * Math.sin(LpR - F) + 318 * Math.sin(A2);
+  sb += -2235 * Math.sin(LpR) + 382 * Math.sin(A3) + 175 * Math.sin(A1 - F) + 175 * Math.sin(A1 + F) + 127 * Math.sin(LpR - Mp) - 115 * Math.sin(LpR + Mp);
+  const lam = (Lp + sl / 1e6) * RAD, bet = (sb / 1e6) * RAD, dist = 385000.56 + sr / 1000;
+  return { lam, bet, dist, ...eclToEq(lam, bet, obliquity(T)) };
+}
+function altOf(H, phi, de) { return Math.asin(Math.sin(phi) * Math.sin(de) + Math.cos(phi) * Math.cos(de) * Math.cos(H)); }
+function hourAngle(ms, lon, ra) { return gmst(ms) * RAD + lon * RAD - ra; }
+function sunAlt(ms, lat, lon) { const c = sunCoords(ms); return altOf(hourAngle(ms, lon, c.ra), lat * RAD, c.dec) / RAD; }
+function moonAlt(ms, lat, lon) { const c = moonCoords(ms); return altOf(hourAngle(ms, lon, c.ra), lat * RAD, c.dec) / RAD; }
+function moonPhase(ms) {
+  const s = sunCoords(ms), m = moonCoords(ms);
+  const psi = Math.acos(Math.cos(m.bet) * Math.cos(m.lam - s.lam));
+  const i = Math.atan2(149598000 * Math.sin(psi), m.dist - 149598000 * Math.cos(psi));
+  const elong = norm360((m.lam - s.lam) / RAD);
+  return { fraction: (1 + Math.cos(i)) / 2, phase: elong / 360 };
+}
+function phaseName(p) {
+  if (p < 0.034 || p > 0.966) return 'New moon';
+  if (p < 0.216) return 'Waxing crescent';
+  if (p < 0.284) return 'First quarter';
+  if (p < 0.466) return 'Waxing gibbous';
+  if (p < 0.534) return 'Full moon';
+  if (p < 0.716) return 'Waning gibbous';
+  if (p < 0.784) return 'Last quarter';
+  return 'Waning crescent';
+}
+
+/* Sky events for one Maldives day: sunrise/sunset, moonrise/moonset, moon overhead/underfoot */
+function skyDay(day, lat, lon) {
+  const STEP = 10 * MIN, t0 = day - 3 * HOUR, t1 = day + DAY + 3 * HOUR;
+  const ts = [], sa = [], ma = [], mh = [];
+  for (let t = t0; t <= t1; t += STEP) {
+    ts.push(t);
+    sa.push(sunAlt(t, lat, lon) + 0.8333);
+    const c = moonCoords(t), H = hourAngle(t, lon, c.ra);
+    const h0 = 0.7275 * Math.asin(6378.14 / c.dist) / RAD - 0.5667;
+    ma.push(altOf(H, lat * RAD, c.dec) / RAD - h0);
+    mh.push(Math.atan2(Math.sin(H), Math.cos(H)));
+  }
+  const refine = (fn, a, b) => { // bisection on a sign change of fn between a and b
+    let fa = fn(a);
+    for (let k = 0; k < 18; k++) { const m = (a + b) / 2, fm = fn(m); if ((fa < 0) === (fm < 0)) { a = m; fa = fm; } else b = m; }
+    return (a + b) / 2;
+  };
+  const sunF = t => sunAlt(t, lat, lon) + 0.8333;
+  const moonF = t => { const c = moonCoords(t); return altOf(hourAngle(t, lon, c.ra), lat * RAD, c.dec) / RAD - (0.7275 * Math.asin(6378.14 / c.dist) / RAD - 0.5667); };
+  const cross = (arr, fn, up) => {
+    const out = [];
+    for (let i = 1; i < arr.length; i++) {
+      const a = arr[i - 1], b = arr[i];
+      if (up ? (a < 0 && b >= 0) : (a >= 0 && b < 0)) out.push(refine(fn, ts[i - 1], ts[i]));
+    }
+    return out;
+  };
+  const inDay = t => t >= day && t < day + DAY;
+  const sunrise = cross(sa, sunF, true).find(inDay) || null;
+  const sunset = cross(sa, sunF, false).find(inDay) || null;
+  const moonrises = cross(ma, moonF, true), moonsets = cross(ma, moonF, false);
+  const transits = [];
+  for (let i = 1; i < mh.length; i++) {
+    const a = mh[i - 1], b = mh[i];
+    if (a < 0 && b >= 0 && b - a < Math.PI) transits.push({ t: refine(t => { const c = moonCoords(t), H = hourAngle(t, lon, c.ra); return Math.sin(H); }, ts[i - 1], ts[i]), type: 'over' });
+    else if (a > 0 && b < 0 && a - b > Math.PI) transits.push({ t: refine(t => { const c = moonCoords(t), H = hourAngle(t, lon, c.ra); return -Math.sin(H); }, ts[i - 1], ts[i]), type: 'under' });
+  }
+  const periods = [];
+  for (const tr of transits) periods.push({ kind: 'major', start: tr.t - HOUR, end: tr.t + HOUR, at: tr.t, label: tr.type === 'over' ? 'Moon overhead' : 'Moon underfoot' });
+  for (const t of moonrises) periods.push({ kind: 'minor', start: t - 30 * MIN, end: t + 30 * MIN, at: t, label: 'Moonrise' });
+  for (const t of moonsets) periods.push({ kind: 'minor', start: t - 30 * MIN, end: t + 30 * MIN, at: t, label: 'Moonset' });
+  const dayPeriods = periods.filter(p => p.end > day && p.start < day + DAY).sort((a, b) => a.start - b.start);
+  return {
+    sunrise, sunset,
+    moonrise: moonrises.find(inDay) || null, moonset: moonsets.find(inDay) || null,
+    overhead: (transits.find(x => x.type === 'over' && inDay(x.t)) || {}).t || null,
+    underfoot: (transits.find(x => x.type === 'under' && inDay(x.t)) || {}).t || null,
+    periods: dayPeriods,
+  };
+}
+
+/* Tides: harmonic models for four Maldives stations (south to north), fitted to published predictions
+   (Oct 2026 - Jun 2027) and checked against gauge-based tables. Heights in metres above chart datum.
+   K2, P1 and Q1 are inferred from S2, K1 and O1. Locations between stations use a latitude blend. */
+const TIDE_STATIONS = [
+  { name: "Gan", lat: -0.693, lon: 73.1556, Z0: 0.7017, M2: [0.3114, 251.85], S2: [0.1723, 286.39], N2: [0.0526, 259.22], K1: [0.0833, 355.17], O1: [0.0442, 19.45] },
+  { name: "Malé", lat: 4.1755, lon: 73.5093, Z0: 0.6153, M2: [0.2123, 231.67], S2: [0.1262, 266.18], N2: [0.0299, 229.7], K1: [0.1126, 344.87], O1: [0.0589, 4.64] },
+  { name: "Naifaru", lat: 5.4444, lon: 73.3658, Z0: 0.5996, M2: [0.1977, 213.82], S2: [0.1157, 263.67], N2: [0.0319, 197.82], K1: [0.1294, 337.83], O1: [0.0666, 351.26] },
+  { name: "Dhidhdhoo", lat: 6.8875, lon: 73.1139, Z0: 0.6775, M2: [0.2337, 198.04], S2: [0.1157, 248.63], N2: [0.0408, 180.22], K1: [0.1579, 346.53], O1: [0.0758, 341.09] },
+];
+const TIDE_KEYS = ['M2', 'S2', 'N2', 'K1', 'O1'];
+const _tideCache = new Map();
+function tideModel(lat) {
+  const key = lat.toFixed(3);
+  if (_tideCache.has(key)) return _tideCache.get(key);
+  const S = TIDE_STATIONS, cx = st => { const o = { Z0: st.Z0 }; for (const k of TIDE_KEYS) o[k] = [st[k][0] * Math.cos(st[k][1] * RAD), st[k][0] * Math.sin(st[k][1] * RAD)]; return o; };
+  let m, source;
+  if (lat <= S[0].lat) { m = cx(S[0]); source = { text: `Tides for ${S[0].name} (nearest station)`, stations: [S[0].name] }; }
+  else if (lat >= S[S.length - 1].lat) { const s = S[S.length - 1]; m = cx(s); source = { text: `Tides for ${s.name} (nearest station)`, stations: [s.name] }; }
+  else {
+    let i = 0; while (lat > S[i + 1].lat) i++;
+    const a = S[i], b = S[i + 1], f = (lat - a.lat) / (b.lat - a.lat), A = cx(a), B = cx(b);
+    m = { Z0: A.Z0 + f * (B.Z0 - A.Z0) };
+    for (const k of TIDE_KEYS) m[k] = [A[k][0] + f * (B[k][0] - A[k][0]), A[k][1] + f * (B[k][1] - A[k][1])];
+    if (f < 0.08) source = { text: `Tides for ${a.name}`, stations: [a.name] };
+    else if (f > 0.92) source = { text: `Tides for ${b.name}`, stations: [b.name] };
+    else source = { text: `Tides estimated between ${a.name} and ${b.name}`, stations: [a.name, b.name] };
+  }
+  m.source = source;
+  if (_tideCache.size > 50) _tideCache.clear();
+  _tideCache.set(key, m);
+  return m;
+}
+function tideAt(ms, lat) {
+  const m = tideModel(lat);
+  const D = jdUT(ms) - 2451545, Tc = D / 36525;
+  const s = 218.3165 + 481267.8813 * Tc, h = 280.4661 + 36000.7698 * Tc, p = 83.3535 + 4069.0137 * Tc, N = (125.0445 - 1934.1363 * Tc) * RAD;
+  const T = 180 + 15 * ((((ms % DAY) + DAY) % DAY) / HOUR);
+  const cN = Math.cos(N), c2 = Math.cos(2 * N), c3 = Math.cos(3 * N), sN = Math.sin(N), s2 = Math.sin(2 * N), s3 = Math.sin(3 * N);
+  const fM2 = 1.0004 - 0.0373 * cN + 0.0002 * c2, uM2 = -2.14 * sN;
+  const fK1 = 1.0060 + 0.1150 * cN - 0.0088 * c2 + 0.0006 * c3, uK1 = -8.86 * sN + 0.68 * s2 - 0.07 * s3;
+  const fO1 = 1.0089 + 0.1871 * cN - 0.0147 * c2 + 0.0014 * c3, uO1 = 10.80 * sN - 1.34 * s2 + 0.19 * s3;
+  const fK2 = 1.0241 + 0.2863 * cN + 0.0083 * c2 - 0.0015 * c3, uK2 = -17.74 * sN + 0.68 * s2 - 0.04 * s3;
+  // each group: [fitted complex amplitude, members [ratio, f, V+u (deg)]]
+  const grp = (ab, members) => { let c = 0, sn = 0; for (const [r, f, th] of members) { c += r * f * Math.cos(th * RAD); sn += r * f * Math.sin(th * RAD); } return ab[0] * c + ab[1] * sn; };
+  return m.Z0
+    + grp(m.M2, [[1, fM2, 2 * T - 2 * s + 2 * h + uM2]])
+    + grp(m.S2, [[1, 1, 2 * T], [0.272, fK2, 2 * T + 2 * h + uK2]])
+    + grp(m.N2, [[1, fM2, 2 * T - 3 * s + 2 * h + p + uM2]])
+    + grp(m.K1, [[1, fK1, T + h - 90 + uK1], [0.331, 1, T - h + 90]])
+    + grp(m.O1, [[1, fO1, T - 2 * s + h + 90 + uO1], [0.194, fO1, T - 3 * s + h + p + 90 + uO1]]);
+}
+function flowAt(ms, lat) { return (tideAt(ms + 5 * MIN, lat) - tideAt(ms - 5 * MIN, lat)) * 6; } // metres per hour
+function tideExtrema(t0, t1, lat) {
+  const STEP = 5 * MIN, out = [];
+  let yPrev = tideAt(t0 - STEP, lat), tCur = t0, yCur = tideAt(tCur, lat);
+  for (let t = t0 + STEP; t <= t1 + STEP; t += STEP) {
+    const y = tideAt(t, lat);
+    if ((yCur > yPrev && yCur >= y) || (yCur < yPrev && yCur <= y)) {
+      const den = yPrev - 2 * yCur + y, off = den !== 0 ? 0.5 * (yPrev - y) / den : 0;
+      const te = tCur + off * STEP;
+      if (te >= t0 && te < t1) out.push({ t: te, h: tideAt(te, lat), type: yCur > yPrev ? 'High' : 'Low' });
+    }
+    yPrev = yCur; tCur = t; yCur = y;
+  }
+  return out;
+}
+function tideDay(day, lat) {
+  const ext = tideExtrema(day, day + DAY, lat);
+  const curve = [];
+  for (let t = day; t <= day + DAY; t += 10 * MIN) curve.push([t, tideAt(t, lat)]);
+  const hs = curve.map(c => c[1]);
+  const max = Math.max(...hs), min = Math.min(...hs);
+  return { ext, curve, max, min, range: max - min, source: tideModel(lat).source };
+}
+function tideStageAt(ms, lat) {
+  const ext = tideExtrema(ms - 8 * HOUR, ms + 8 * HOUR, lat);
+  const near = ext.reduce((a, e) => (!a || Math.abs(e.t - ms) < Math.abs(a.t - ms)) ? e : a, null);
+  const next = ext.find(e => e.t > ms) || null;
+  const f = flowAt(ms, lat);
+  let stage = f >= 0 ? 'Rising' : 'Falling';
+  if (near && Math.abs(near.t - ms) <= 40 * MIN) stage = near.type + ' slack';
+  return { h: tideAt(ms, lat), flow: f, stage, next };
+}
+
+/* Fishing analysis for one day */
+const _cache = new Map();
+function analyze(day, lat, lon) {
+  const key = day + '|' + lat.toFixed(3) + '|' + lon.toFixed(3);
+  if (_cache.has(key)) return _cache.get(key);
+  const sky = skyDay(day, lat, lon);
+  const tide = tideDay(day, lat);
+  const ph = moonPhase(day + 12 * HOUR);
+  const SYN = 29.530589, age = ph.phase * SYN;
+  const dNew = Math.min(age, SYN - age), dFull = Math.abs(age - SYN / 2);
+  const moonScore = clamp(1 - Math.min(dNew, dFull) / 7.4, 0, 1);
+  const rangeScore = clamp((tide.range - 0.35) / 0.6, 0, 1);
+  const lights = [sky.sunrise && { t: sky.sunrise, name: 'sunrise' }, sky.sunset && { t: sky.sunset, name: 'sunset' }].filter(Boolean);
+  let overlap = 0, overlapText = '';
+  for (const p of sky.periods) for (const L of lights) {
+    if (p.start < L.t + HOUR && p.end > L.t - HOUR) {
+      const v = p.kind === 'major' ? 1 : 0.6;
+      if (v > overlap) { overlap = v; overlapText = `a ${p.kind} period lines up with ${L.name}`; }
+    }
+  }
+  const score = 100 * (0.4 * moonScore + 0.35 * rangeScore + 0.25 * overlap);
+  const stars = clamp(1 + Math.round(score / 25), 1, 5);
+  // 15-minute slots
+  const slots = [];
+  let maxFlow = 0;
+  for (let i = 0; i < 96; i++) { const t = day + (i + 0.5) * 15 * MIN; const f = flowAt(t, lat); maxFlow = Math.max(maxFlow, Math.abs(f)); slots.push({ t, f }); }
+  for (const s of slots) {
+    let sol = 0;
+    for (const p of sky.periods) {
+      const inside = s.t >= p.start && s.t <= p.end;
+      const dist = inside ? 0 : Math.min(Math.abs(s.t - p.start), Math.abs(s.t - p.end));
+      const w = p.kind === 'major' ? 1 : 0.6, fade = p.kind === 'major' ? 45 * MIN : 30 * MIN;
+      sol = Math.max(sol, w * clamp(1 - dist / fade, 0, 1));
+    }
+    let light = 0;
+    for (const L of lights) { const dist = Math.max(0, Math.abs(s.t - L.t) - HOUR); light = Math.max(light, clamp(1 - dist / (45 * MIN), 0, 1)); }
+    const flowN = maxFlow > 0 ? Math.abs(s.f) / maxFlow : 0;
+    s.sol = sol; s.light = light; s.flowN = flowN;
+    s.score = 100 * (0.4 * sol + 0.25 * light + 0.35 * flowN);
+  }
+  // best windows
+  const sc = slots.map(s => s.score), used = new Array(96).fill(false), wins = [];
+  for (let k = 0; k < 3; k++) {
+    let best = -1;
+    for (let i = 0; i < 96; i++) if (!used[i] && (best < 0 || sc[i] > sc[best])) best = i;
+    if (best < 0 || sc[best] < 45) break;
+    const thr = sc[best] * 0.8;
+    let a = best, b = best;
+    while (a > 0 && !used[a - 1] && sc[a - 1] >= thr && best - a < 6) a--;
+    while (b < 95 && !used[b + 1] && sc[b + 1] >= thr && b - best < 6) b++;
+    while (b - a < 3) { if (a > 0 && !used[a - 1]) a--; else if (b < 95 && !used[b + 1]) b++; else break; }
+    let sum = 0; for (let i = a; i <= b; i++) sum += sc[i];
+    wins.push({ start: day + a * 15 * MIN, end: day + (b + 1) * 15 * MIN, avg: sum / (b - a + 1), peak: sc[best] });
+    for (let i = Math.max(0, a - 4); i <= Math.min(95, b + 4); i++) used[i] = true;
+  }
+  wins.sort((x, y) => x.start - y.start);
+  for (const w of wins) {
+    const why = [];
+    for (const p of sky.periods) if (p.start < w.end && p.end > w.start) why.push(`${p.label} ${fmtTime(p.at)}`);
+    for (const L of lights) if (L.t > w.start - HOUR && L.t < w.end + HOUR) why.push(`${L.name === 'sunrise' ? 'Sunrise' : 'Sunset'} ${fmtTime(L.t)}`);
+    const mid = slots.filter(s => s.t >= w.start && s.t <= w.end);
+    const fAvg = mid.reduce((a, s) => a + s.f, 0) / Math.max(1, mid.length);
+    const nAvg = mid.reduce((a, s) => a + s.flowN, 0) / Math.max(1, mid.length);
+    why.push((nAvg > 0.6 ? 'Strong ' : '') + (fAvg >= 0 ? 'rising tide' : 'falling tide'));
+    w.why = why.map((x, i) => i === why.length - 1 && nAvg <= 0.6 ? x[0].toUpperCase() + x.slice(1) : x);
+    w.grade = w.avg >= 70 ? 'Prime' : w.avg >= 55 ? 'Good' : 'Fair';
+  }
+  // summary
+  const isNew = dNew < dFull, dd = isNew ? dNew : dFull;
+  const until = isNew ? (age > SYN / 2 ? SYN - age : -age) : (SYN / 2 - age);
+  let moonText;
+  if (dd < 1) moonText = (isNew ? 'New' : 'Full') + ' moon today';
+  else if (dd <= 4.5) { const n = Math.round(Math.abs(until)); moonText = `${isNew ? 'New' : 'Full'} moon ${until > 0 ? `in ${n} day${n === 1 ? '' : 's'}` : `${n} day${n === 1 ? '' : 's'} ago`}`; }
+  else moonText = phaseName(ph.phase);
+  const tideText = tide.range >= 0.8 ? 'strong spring tides' : tide.range <= 0.5 ? 'weak neap tides' : 'moderate tides';
+  const summary = `${moonText} with ${tideText} (${tide.range.toFixed(2)} m range). ` + (overlapText ? overlapText[0].toUpperCase() + overlapText.slice(1) + '.' : 'No solunar period lines up with dawn or dusk.');
+  const res = { day, lat, lon, sky, tide, ph, age, score, stars, label: ['Poor', 'Fair', 'Average', 'Good', 'Excellent'][stars - 1], slots, wins, summary, tideText };
+  if (_cache.size > 60) _cache.clear();
+  _cache.set(key, res);
+  return res;
+}
+</script>
+<script>
+const $ = s => document.querySelector(s);
+const PRESETS = [
+  { id: 'male', name: 'Malé', lat: 4.1755, lon: 73.5093 },
+  { id: 'maaungoodhoo', name: 'Sh. Maaungoodhoo', lat: 6.0694, lon: 73.2811 },
+  { id: 'maafushi', name: 'K. Maafushi', lat: 3.9426, lon: 73.4906 },
+  { id: 'dhidhdhoo', name: 'HA. Dhidhdhoo', lat: 6.8875, lon: 73.1139 },
+  { id: 'fuvahmulah', name: 'Fuvahmulah', lat: -0.2989, lon: 73.4245 },
+  { id: 'addu', name: 'Addu City', lat: -0.6153, lon: 73.0828 },
+];
+const SPOT_TYPES = {
+  kandu: { label: 'Kandu (channel)', short: 'Kandu', tip: 'Fish the strongest flow. An incoming tide pushes clear ocean water and bait through the channel mouth.' },
+  thila: { label: 'Thila (pinnacle)', short: 'Thila', tip: 'Needs moving water. Work the up-current side and drift over the top.' },
+  giri: { label: 'Giri (coral head)', short: 'Giri', tip: 'Best on a rising tide when water covers the top. Cast around the edges at dawn and dusk.' },
+  faru: { label: 'Faru (outer reef)', short: 'Faru', tip: 'Rising tide around dawn and dusk. Troll or cast along the edge.' },
+  dropoff: { label: 'Drop-off', short: 'Drop-off', tip: 'Less tide-dependent. Deep bottom fishing is best at night and on major periods.' },
+  lagoon: { label: 'Lagoon', short: 'Lagoon', tip: 'Fish around high tide. Many spots are too shallow at low water.' },
+  harbour: { label: 'Harbour or jetty', short: 'Harbour', tip: 'Night fishing under lights, around high tide.' },
+  ocean: { label: 'Open ocean or FAD', short: 'Ocean', tip: 'Troll early morning. Birds and bait matter more than tide.' },
+};
+const SPECIES = ['Yellowfin tuna', 'Skipjack tuna', 'Dogtooth tuna', 'Wahoo', 'Mahi-mahi', 'Sailfish', 'Giant trevally', 'Bluefin trevally', 'Rainbow runner', 'Barracuda', 'Red snapper', 'Bohar snapper', 'Green jobfish', 'Grouper', 'Emperor', 'Squirrelfish'];
+const METHODS = ['Handline', 'Bottom fishing', 'Jigging', 'Popping', 'Trolling', 'Casting', 'Fly'];
+
+const STANDALONE = !(window.claude && typeof window.claude.use === 'function');
+const CAN_GPS = STANDALONE && 'geolocation' in navigator && window.isSecureContext;
+function getPosition() {
+  return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+    p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }),
+    e => reject(e), { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }));
+}
+function gpsButton(onFix, hintEl) {
+  if (!CAN_GPS) return null;
+  const b = h('button', { class: 'btn btn-sm quiet', type: 'button', text: 'Use my current position' });
+  b.addEventListener('click', async () => {
+    b.disabled = true; b.textContent = 'Getting GPS fix…';
+    try {
+      const p = await getPosition();
+      onFix(p);
+      if (hintEl) { hintEl.textContent = `${fmtCoord(p.lat, p.lon)} · accurate to about ${Math.round(p.acc)} m`; hintEl.className = 'hint ok'; }
+    } catch (e) {
+      if (hintEl) { hintEl.textContent = e && e.code === 1 ? 'Location permission is off. Allow it for this app in your phone settings, or paste coordinates.' : 'No GPS fix yet. Move to open sky and try again, or paste coordinates.'; hintEl.className = 'hint err'; }
+    } finally { b.disabled = false; b.textContent = 'Use my current position'; }
+  });
+  return b;
+}
+const S = { tab: 'today', day: mvDayStart(Date.now()), loc: loadLoc(), spots: [], catches: [], ready: false, mode: 'local' };
+
+/* ---------- small helpers ---------- */
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+function loadLoc() {
+  const v = lsGet('kandu.loc');
+  if (v && isFinite(v.lat) && isFinite(v.lon) && v.name) return v;
+  return PRESETS[0];
+}
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'text') el.textContent = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2600);
+}
+function fmtCoord(lat, lon) {
+  return `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(4)}° ${lon >= 0 ? 'E' : 'W'}`;
+}
+function parseCoords(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  const ok = (a, b) => (isFinite(a) && isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180) ? { lat: a, lon: b } : null;
+  let m = s.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || s.match(/[?&](?:q|ll|query|destination)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || s.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (m) return ok(+m[1], +m[2]);
+  const dms = [...s.matchAll(/(\d+(?:\.\d+)?)\s*°\s*(?:(\d+(?:\.\d+)?)\s*['′]\s*)?(?:(\d+(?:\.\d+)?)\s*(?:"|″|'')\s*)?([NSEW])/gi)];
+  if (dms.length >= 2) {
+    let lat = null, lon = null;
+    for (const p of dms) {
+      let v = +p[1] + (+p[2] || 0) / 60 + (+p[3] || 0) / 3600;
+      const hemi = p[4].toUpperCase();
+      if (hemi === 'S' || hemi === 'W') v = -v;
+      if (hemi === 'N' || hemi === 'S') lat = v; else lon = v;
+    }
+    if (lat != null && lon != null) return ok(lat, lon);
+  }
+  m = s.match(/(-?\d+(?:\.\d+)?)\s*°?\s*([NS])?[\s,;]+(-?\d+(?:\.\d+)?)\s*°?\s*([EW])?/i);
+  if (m) {
+    let lat = +m[1], lon = +m[3];
+    if (m[2] && /s/i.test(m[2])) lat = -Math.abs(lat);
+    if (m[4] && /w/i.test(m[4])) lon = -Math.abs(lon);
+    return ok(lat, lon);
+  }
+  return null;
+}
+function distBearing(a, b) {
+  const R = 6371, p1 = a.lat * RAD, p2 = b.lat * RAD, dp = (b.lat - a.lat) * RAD, dl = (b.lon - a.lon) * RAD;
+  const x = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  const km = 2 * R * Math.asin(Math.sqrt(x));
+  const y = Math.sin(dl) * Math.cos(p2), xx = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  const brg = (Math.atan2(y, xx) / RAD + 360) % 360;
+  const pts = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  return { km, nm: km / 1.852, brg, pt: pts[Math.round(brg / 22.5) % 16] };
+}
+function fmtDist(d) {
+  const km = d.km < 10 ? d.km.toFixed(1) : Math.round(d.km);
+  const nm = d.nm < 10 ? d.nm.toFixed(1) : Math.round(d.nm);
+  return `${km} km · ${nm} nm · ${Math.round(d.brg)}° ${d.pt}`;
+}
+function moonGlyph(phase, size, title) {
+  const r = size / 2 - 1, c = size / 2, k = Math.cos(2 * Math.PI * phase), waxing = phase < 0.5;
+  const rx = Math.max(0.01, Math.abs(k) * r).toFixed(2);
+  const limb = waxing ? 1 : 0;
+  const term = waxing ? (k > 0 ? 0 : 1) : (k < 0 ? 0 : 1);
+  const lit = `M${c} ${c - r} A${r} ${r} 0 0 ${limb} ${c} ${c + r} A${rx} ${r} 0 0 ${term} ${c} ${c - r}Z`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${title || ''}"><circle cx="${c}" cy="${c}" r="${r}" fill="var(--moon-dark)" stroke="var(--muted)" stroke-width="1"/><path d="${lit}" fill="var(--moon-lit)"/></svg>`;
+}
+const isToday = day => day === mvDayStart(Date.now());
+function dayOffsetLabel(day) {
+  const diff = Math.round((day - mvDayStart(Date.now())) / DAY);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return diff > 0 ? `In ${diff} days` : `${-diff} days ago`;
+}
+function currentAnalysis() { return analyze(S.day, S.loc.lat, S.loc.lon); }
+
+/* ---------- Today ---------- */
+function renderToday() {
+  const A = currentAnalysis();
+  $('#locName').textContent = S.loc.name;
+  $('#dateLabel').replaceChildren(h('span', { text: fmtDate(S.day) }), h('small', { text: dayOffsetLabel(S.day) }));
+  $('#todayBtn').setAttribute('aria-pressed', String(isToday(S.day)));
+
+  // Rating
+  const pips = h('div', { class: 'pips', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5].map(i => h('i', { class: i <= A.stars ? 'on' : '' })));
+  $('#rating').replaceChildren(
+    h('div', { class: 'rating-num', 'aria-label': `Bite rating ${A.stars} out of 5` }, String(A.stars), h('small', { text: '/5' })),
+    h('div', { class: 'rating-meta' }, h('span', { class: 'eyebrow', text: 'Bite rating' }), h('span', { class: 'rating-label', text: A.label }), pips),
+    h('p', { text: A.summary })
+  );
+
+  renderNow(A);
+  renderChart(A);
+
+  // Windows
+  const wl = $('#windows');
+  if (!A.wins.length) wl.replaceChildren(h('li', {}, h('div', { class: 'win-time', text: '—' }), h('p', { class: 'fine', text: 'No standout windows today. Fish the tide changes.' })));
+  else wl.replaceChildren(...A.wins.map(w => h('li', {},
+    h('div', { class: 'win-time' }, `${fmtTime(w.start)}–${fmtTime(w.end === S.day + DAY ? w.end - 1 : w.end)}`, h('small', { class: 'grade-' + w.grade, text: w.grade })),
+    h('div', { class: 'chips' }, w.why.map(x => h('span', { class: 'chip', text: x })))
+  )));
+
+  // Tides
+  $('#tideRange').textContent = `range ${A.tide.range.toFixed(2)} m`;
+  $('#tideNote').textContent = `${A.tide.source.text}. Times are usually within 10–20 minutes of published tide tables; local reef and channel effects can shift them a little more.`;
+  $('#tideList').replaceChildren(...A.tide.ext.map(e => h('li', {},
+    h('span', { class: 't-type ' + e.type, text: e.type }),
+    h('span', { class: 'mono', text: fmtTime(e.t) }),
+    h('span', { class: 'mono', text: e.h.toFixed(2) + ' m' })
+  )));
+
+  // Sky
+  const ph = A.ph, age = A.age;
+  $('#phaseRow').innerHTML = moonGlyph(ph.phase, 40, phaseName(ph.phase));
+  $('#phaseRow').append(h('div', {}, h('b', { text: phaseName(ph.phase) }), h('span', { class: 'fine', text: `${Math.round(ph.fraction * 100)}% lit · day ${Math.floor(age) + 1} of 29.5` })));
+  const sk = A.sky, t = x => x ? fmtTime(x) : 'none today';
+  const rows = [['Sunrise', sk.sunrise], ['Sunset', sk.sunset], ['Moonrise', sk.moonrise], ['Moonset', sk.moonset], ['Moon overhead', sk.overhead], ['Moon underfoot', sk.underfoot]];
+  $('#skyList').replaceChildren(...rows.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: t(v) })]));
+
+  renderWeek();
+  $('#windyLink').href = `https://www.windy.com/?${S.loc.lat.toFixed(3)},${S.loc.lon.toFixed(3)},9`;
+  renderPlanArea();
+}
+
+function renderNow(A) {
+  const el = $('#nowCard');
+  if (!isToday(S.day)) { el.hidden = true; return; }
+  const now = Date.now(), ts = tideStageAt(now, S.loc.lat);
+  const parts = [h('b', { text: 'Now ' + fmtTime(now) }), h('span', { text: `${ts.stage} tide, ${ts.h.toFixed(2)} m` })];
+  if (ts.next) parts.push(h('span', { text: `${ts.next.type} at ${fmtTime(ts.next.t)} (${ts.next.h.toFixed(2)} m)` }));
+  const nextWin = A.wins.find(w => w.end > now);
+  if (nextWin) parts.push(h('span', { text: nextWin.start <= now ? `In a ${nextWin.grade.toLowerCase()} window until ${fmtTime(nextWin.end)}` : `Next window ${fmtTime(nextWin.start)}` }));
+  else parts.push(h('span', { text: 'No more windows today' }));
+  el.replaceChildren(...parts);
+  el.hidden = false;
+}
+
+function renderChart(A) {
+  const host = $('#chart');
+  const W = Math.max(300, Math.round(host.clientWidth || 600)), H = 236;
+  const L = 40, R = 8, pw = W - L - R;
+  const day = A.day, x = t => L + clamp((t - day) / DAY, 0, 1) * pw;
+  const solTop = 6, solH = 18, tTop = 32, tBot = 152, bTop = 162, bBot = 200, axY = 216;
+  const span = Math.max(0.2, A.tide.max - A.tide.min);
+  const lo = A.tide.min - 0.32 * span, hi = A.tide.max + 0.3 * span;
+  const y = v => tBot - (v - lo) / (hi - lo) * (tBot - tTop);
+  const out = [];
+  out.push(`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`);
+  out.push(`<rect class="c-plot" x="${L}" y="${solTop}" width="${pw}" height="${bBot - solTop}"/>`);
+  const sk = A.sky;
+  if (sk.sunrise) out.push(`<rect class="c-night" x="${L}" y="${solTop}" width="${(x(sk.sunrise) - L).toFixed(1)}" height="${bBot - solTop}"/>`);
+  if (sk.sunset) out.push(`<rect class="c-night" x="${x(sk.sunset).toFixed(1)}" y="${solTop}" width="${(L + pw - x(sk.sunset)).toFixed(1)}" height="${bBot - solTop}"/>`);
+  const step = pw < 420 ? 6 : 3;
+  for (let hr = 0; hr <= 24; hr += step) {
+    const gx = (L + hr / 24 * pw).toFixed(1);
+    out.push(`<line class="c-grid" x1="${gx}" x2="${gx}" y1="${tTop}" y2="${bBot}"/>`);
+    out.push(`<text class="c-lbl" x="${gx}" y="${axY}" text-anchor="${hr === 0 ? 'start' : hr === 24 ? 'end' : 'middle'}">${pad(hr % 24 === 0 && hr ? 24 : hr)}</text>`);
+  }
+  // tide area
+  const pts = A.tide.curve.map(([t, v]) => `${x(t).toFixed(1)},${y(v).toFixed(1)}`);
+  out.push(`<path class="c-tide" d="M${L},${tBot} L${pts.join(' L')} L${L + pw},${tBot} Z"/>`);
+  out.push(`<path class="c-tide-line" d="M${pts.join(' L')}"/>`);
+  for (const e of A.tide.ext) {
+    const ex = x(e.t), ey = y(e.h);
+    out.push(`<circle class="c-dot" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3.5"/>`);
+    const lx = clamp(ex, L + 30, L + pw - 30);
+    const ly = e.type === 'High' ? ey - 9 : ey + 17;
+    out.push(`<text class="c-val" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle">${fmtTime(e.t)} ${e.h.toFixed(2)}</text>`);
+  }
+  // solunar bands
+  for (const p of sk.periods) {
+    const x0 = x(p.start), x1 = x(p.end), w = x1 - x0;
+    if (w <= 0.5) continue;
+    out.push(`<rect class="${p.kind === 'major' ? 'c-major' : 'c-minor'}" x="${x0.toFixed(1)}" y="${solTop + (p.kind === 'major' ? 0 : 3)}" width="${w.toFixed(1)}" height="${p.kind === 'major' ? solH : solH - 6}" rx="3"/>`);
+    if (w > 40) out.push(`<text class="${p.kind === 'major' ? 'c-band-major' : 'c-band-minor'}" x="${((x0 + x1) / 2).toFixed(1)}" y="${solTop + 13}" text-anchor="middle">${p.kind === 'major' ? 'Major' : 'Minor'}</text>`);
+  }
+  // bite bars
+  const bw = pw / 24;
+  for (let hr = 0; hr < 24; hr++) {
+    const s = A.slots.slice(hr * 4, hr * 4 + 4), v = Math.max(...s.map(z => z.score));
+    const t0 = day + hr * HOUR, t1 = t0 + HOUR;
+    const hot = A.wins.some(w => w.start < t1 && w.end > t0);
+    const bh = Math.max(2, v / 100 * (bBot - bTop));
+    out.push(`<rect class="${hot ? 'c-bar-hot' : 'c-bar'}" x="${(L + hr * bw + 1).toFixed(1)}" y="${(bBot - bh).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5"/>`);
+  }
+  out.push(`<line class="c-grid" x1="${L}" x2="${L + pw}" y1="${bBot}" y2="${bBot}"/>`);
+  // row labels
+  out.push(`<text class="c-lbl" x="${L - 6}" y="${solTop + 13}" text-anchor="end">Moon</text>`);
+  out.push(`<text class="c-lbl" x="${L - 6}" y="${(tTop + tBot) / 2 + 4}" text-anchor="end">Tide</text>`);
+  out.push(`<text class="c-lbl" x="${L - 6}" y="${bTop + 24}" text-anchor="end">Bite</text>`);
+  // now line
+  if (isToday(day)) {
+    const nx = x(Date.now()).toFixed(1);
+    out.push(`<line class="c-now" x1="${nx}" x2="${nx}" y1="${solTop}" y2="${bBot + 4}"/>`);
+    out.push(`<text class="c-now-lbl" x="${nx}" y="${H - 6}" text-anchor="middle">Now</text>`);
+  }
+  out.push('</svg>');
+  host.innerHTML = out.join('');
+}
+
+function renderWeek() {
+  const today = mvDayStart(Date.now());
+  const offset = Math.floor((S.day - today) / DAY / 7) * 7;
+  const start = today + offset * DAY;
+  const wk = $('#week');
+  wk.replaceChildren(...Array.from({ length: 7 }, (_, i) => {
+    const d = start + i * DAY, A = analyze(d, S.loc.lat, S.loc.lon), p = mvParts(d);
+    const btn = h('button', { class: 'day-btn', type: 'button', 'aria-label': `${fmtDate(d)}, rating ${A.stars} of 5`, onclick: () => { S.day = d; renderToday(); } },
+      h('span', { class: 'dn', text: WD[p.wd] }),
+      h('span', { class: 'dd', text: String(p.d) }),
+      h('span', { html: moonGlyph(A.ph.phase, 18, phaseName(A.ph.phase)) }),
+      h('span', { class: 'mini-pips', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5].map(k => h('i', { class: k <= A.stars ? 'on' : '' })))
+    );
+    if (d === S.day) btn.setAttribute('aria-current', 'date');
+    return btn;
+  }));
+}
+
+/* ---------- Trip plan (Claude) ---------- */
+let sampleFn = null, planCtl = null;
+function renderPlanArea() { $('#planArea').hidden = !sampleFn; }
+function planPrompt() {
+  const A = currentAnalysis(), sk = A.sky;
+  const lines = [];
+  lines.push(`You are an experienced Maldivian fishing guide. Plan a fishing trip for ${fmtDate(S.day)} near ${S.loc.name} (${fmtCoord(S.loc.lat, S.loc.lon)}). Use only the conditions below. You have no live weather data.`);
+  lines.push('', 'Conditions (Maldives time, UTC+5):');
+  lines.push(`- Bite rating ${A.stars}/5 (${A.label}). ${A.summary}`);
+  lines.push(`- Moon: ${phaseName(A.ph.phase)}, ${Math.round(A.ph.fraction * 100)}% lit.`);
+  lines.push(`- Sunrise ${sk.sunrise ? fmtTime(sk.sunrise) : 'n/a'}, sunset ${sk.sunset ? fmtTime(sk.sunset) : 'n/a'}.`);
+  lines.push(`- Tides (Malé prediction): ${A.tide.ext.map(e => `${e.type} ${fmtTime(e.t)} ${e.h.toFixed(2)} m`).join('; ')}.`);
+  lines.push(`- Solunar periods: ${sk.periods.map(p => `${p.kind} ${fmtTime(p.start)}-${fmtTime(p.end)} (${p.label} ${fmtTime(p.at)})`).join('; ') || 'none'}.`);
+  lines.push(`- Best windows by score: ${A.wins.map(w => `${fmtTime(w.start)}-${fmtTime(w.end)} ${w.grade} (${w.why.join(', ')})`).join('; ') || 'none'}.`);
+  lines.push('', 'The angler\'s saved spots:');
+  if (S.spots.length) for (const s of S.spots.slice(0, 15)) {
+    const d = distBearing(S.loc, s);
+    lines.push(`- ${s.name}: ${SPOT_TYPES[s.type]?.label || s.type}${s.depth ? `, ${s.depth} m deep` : ''}, ${d.km.toFixed(1)} km ${d.pt} of ${S.loc.name}${s.notes ? `. Notes: ${String(s.notes).slice(0, 160)}` : ''}`);
+  } else lines.push('- None saved yet. Suggest spot types (kandu, thila, faru edge, drop-off) instead of named places.');
+  if (S.catches.length) {
+    const st = catchStats();
+    lines.push('', `Catch history: ${S.catches.length} catches. Top species: ${st.topSpecies}. Most catches on: ${st.bestTide} tide.`);
+  }
+  lines.push('', 'Write a short plan of at most 170 words. Use exactly these four headings, each on its own line: When, Where, How, Safety. Plain text only, no markdown symbols. Match spots to the windows and tide direction, suggest methods and bait that suit Maldivian reef and pelagic fishing, and remind the angler to check wind and swell before going out.');
+  return lines.join('\n');
+}
+function renderPlanText(text) {
+  const out = $('#planOut');
+  out.hidden = false;
+  const lines = String(text).replace(/[*#_`]/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+  out.replaceChildren(...lines.map(l => {
+    const m = l.match(/^(When|Where|How|Safety)\s*:?\s*(.*)$/i);
+    if (m) return [h('div', { class: 'ph', text: m[1] }), m[2] ? h('p', { text: m[2] }) : null];
+    return h('p', { text: l });
+  }).flat().filter(Boolean));
+}
+async function askPlan() {
+  if (!sampleFn) return;
+  const btn = $('#planBtn'), stop = $('#planStop'), out = $('#planOut');
+  btn.disabled = true; stop.hidden = false;
+  out.hidden = false; out.replaceChildren(h('p', { class: 'fine', text: 'Thinking…' }));
+  planCtl = new AbortController();
+  try {
+    const { text, truncated } = await sampleFn(planPrompt(), { signal: planCtl.signal, onText: ({ text }) => renderPlanText(text) });
+    renderPlanText(text);
+    if (truncated) out.append(h('p', { class: 'fine', text: 'The plan was cut short. Ask again for a shorter version.' }));
+  } catch (e) {
+    const code = e && e.code;
+    if (code === 'cancelled') { if (e.text) renderPlanText(e.text); else out.hidden = true; }
+    else if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(code)) { sampleFn = null; out.hidden = true; renderPlanArea(); }
+    else {
+      if (e && e.text && code !== 'refused') renderPlanText(e.text); else out.replaceChildren();
+      out.append(h('p', { class: 'fine', text: code === 'rate_limited' ? 'Claude is busy or your usage limit is reached. Try again later.' : code === 'session_expired' ? 'Sign in to Claude again, then try once more.' : 'The plan didn\'t finish. Tap the button to try again.' }));
+    }
+  } finally {
+    btn.disabled = false; stop.hidden = true; planCtl = null;
+  }
+}
+
+/* ---------- Storage ---------- */
+const Store = {
+  db: null,
+  async init() {
+    let db = null, user = null;
+    try {
+      if (window.claude && typeof window.claude.use === 'function') {
+        [db, user] = await Promise.all([window.claude.use('db').catch(() => null), window.claude.use('user').catch(() => null)]);
+      }
+    } catch (e) { db = null; }
+    let owner = false;
+    try { owner = user ? await user.isOwner() : false; } catch (e) { owner = false; }
+    if (db && owner) { this.db = db; S.mode = 'cloud'; this.subscribe(); }
+    else this.useLocal();
+  },
+  useLocal(reason) {
+    this.db = null; S.mode = 'local';
+    S.spots = lsGet('kandu.spots') || [];
+    S.catches = lsGet('kandu.catches') || [];
+    S.catches.sort((a, b) => b.at - a.at);
+    S.ready = true;
+    if (reason) toast(reason);
+    renderSpots(); renderLog();
+  },
+  subscribe() {
+    const seen = { spots: false, catches: false };
+    let failed = false;
+    const fail = () => { if (failed) return; failed = true; this.useLocal('Couldn\'t reach your saved data. Saving in this browser for now.'); };
+    const after = kind => {
+      if (failed) return;
+      seen[kind] = true;
+      if (seen.spots && seen.catches) { S.ready = true; renderSpots(); renderLog(); }
+    };
+    this.db.collection('spots').onSnapshot(snap => {
+      S.spots = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      after('spots');
+    }, fail);
+    this.db.collection('catches').onSnapshot(snap => {
+      S.catches = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.at - a.at);
+      after('catches');
+    }, fail);
+  },
+  async add(kind, data) {
+    data.createdAt = Date.now();
+    if (this.db) {
+      try { await this.db.collection(kind).doc().set(data); return true; }
+      catch (e) { toast(e && e.code === 'quota_exceeded' ? 'Storage is full. Delete some old entries first.' : 'Couldn\'t save. Check your connection and try again.'); return false; }
+    }
+    const list = kind === 'spots' ? S.spots : S.catches;
+    list.push({ id: 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...data });
+    if (kind === 'catches') S.catches.sort((a, b) => b.at - a.at);
+    if (!lsSet('kandu.' + kind, list)) toast('Saved for this visit only. This browser blocks storage.');
+    kind === 'spots' ? (renderSpots(), renderLog()) : renderLog();
+    return true;
+  },
+  async remove(kind, id) {
+    if (this.db) {
+      try { await this.db.collection(kind).doc(id).delete(); return true; }
+      catch (e) { toast('Couldn\'t delete. Try again.'); return false; }
+    }
+    if (kind === 'spots') S.spots = S.spots.filter(s => s.id !== id); else S.catches = S.catches.filter(c => c.id !== id);
+    lsSet('kandu.' + kind, kind === 'spots' ? S.spots : S.catches);
+    kind === 'spots' ? (renderSpots(), renderLog()) : renderLog();
+    return true;
+  },
+};
+function storageNote(el) {
+  if (!S.ready) return;
+  el.classList.toggle('local', S.mode !== 'cloud');
+  el.textContent = S.mode === 'cloud' ? 'Private to you and synced across your devices.' : 'Saved in this browser only.';
+}
+
+/* ---------- Spots ---------- */
+function confirmButton(label, onConfirm) {
+  const b = h('button', { class: 'btn btn-sm quiet', type: 'button', text: label });
+  let armed = false, timer;
+  b.addEventListener('click', async () => {
+    if (!armed) { armed = true; b.textContent = 'Tap again to delete'; b.className = 'btn btn-sm danger'; timer = setTimeout(() => { armed = false; b.textContent = label; b.className = 'btn btn-sm quiet'; }, 3500); return; }
+    clearTimeout(timer); b.disabled = true; await onConfirm(); b.disabled = false;
+  });
+  return b;
+}
+function renderSpots() {
+  storageNote($('#spotsNote'));
+  const list = $('#spotList');
+  if (!S.ready) { list.replaceChildren(); $('#spotMapCard').hidden = true; return; }
+  if (!S.spots.length) {
+    $('#spotMapCard').hidden = true;
+    list.replaceChildren(h('div', { class: 'empty' },
+      h('h3', { text: 'No spots saved yet' }),
+      h('p', { text: 'Save your kandu mouths, thilas and reef edges with GPS coordinates. Paste them from Google Maps or read them off your GPS. Each spot shows its distance and bearing from your base and the tide that suits it.' }),
+      h('button', { class: 'btn btn-sm', type: 'button', text: 'Add your first spot', onclick: () => openSpotForm() })));
+    return;
+  }
+  renderSpotMap();
+  list.replaceChildren(...S.spots.map(s => {
+    const ty = SPOT_TYPES[s.type] || { label: s.type, short: s.type, tip: '' };
+    const d = distBearing(S.loc, s);
+    const count = S.catches.filter(c => c.spotId === s.id).length;
+    return h('article', { class: 'item' },
+      h('div', { class: 'item-top' }, h('span', { class: 'item-title', text: s.name }), h('span', { class: 'badge', text: ty.short })),
+      h('div', { class: 'meta' }, h('span', { class: 'mono', text: fmtCoord(s.lat, s.lon) }), s.depth ? h('span', { text: `${s.depth} m deep` }) : null, h('span', { text: count ? `${count} catch${count === 1 ? '' : 'es'}` : 'No catches yet' })),
+      h('div', { class: 'meta' }, h('span', { text: `From ${S.loc.name}: ${fmtDist(d)}` })),
+      s.notes ? h('p', { text: s.notes }) : null,
+      ty.tip ? h('div', { class: 'tip' }, h('b', { text: 'Tide tip: ' }), ty.tip) : null,
+      h('div', { class: 'row' },
+        h('a', { class: 'link-btn', href: `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lon}`, target: '_blank', rel: 'noopener', text: 'Open in Maps' }),
+        h('button', { class: 'btn btn-sm quiet', type: 'button', text: 'Log a catch here', onclick: () => openCatchForm(s.id) }),
+        confirmButton('Delete', () => Store.remove('spots', s.id)))
+    );
+  }));
+}
+function renderSpotMap() {
+  const card = $('#spotMapCard'), host = $('#spotMap');
+  card.hidden = false;
+  const W = Math.max(300, Math.round(host.clientWidth || 600)), H = Math.round(Math.min(320, Math.max(220, W * 0.55)));
+  const pts = [{ ...S.loc, home: true }, ...S.spots];
+  const lat0 = pts.reduce((a, p) => a + p.lat, 0) / pts.length;
+  const kx = Math.cos(lat0 * RAD);
+  const xs = pts.map(p => p.lon * kx), ys = pts.map(p => p.lat);
+  let minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const padDeg = 0.01;
+  if (maxX - minX < padDeg) { minX -= padDeg; maxX += padDeg; }
+  if (maxY - minY < padDeg) { minY -= padDeg; maxY += padDeg; }
+  const P = 26, sc = Math.min((W - 2 * P) / (maxX - minX), (H - 2 * P - 14) / (maxY - minY));
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const px = p => W / 2 + (p.lon * kx - cx) * sc, py = p => (H - 14) / 2 - (p.lat - cy) * sc;
+  const o = [`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`];
+  for (let i = 1; i < 4; i++) { o.push(`<line class="m-grid" x1="${W * i / 4}" x2="${W * i / 4}" y1="0" y2="${H - 18}"/>`); o.push(`<line class="m-grid" x1="0" x2="${W}" y1="${(H - 18) * i / 4}" y2="${(H - 18) * i / 4}"/>`); }
+  // scale bar
+  const kmPerUnit = 111.32; const targetPx = W * 0.22; const kmAt = targetPx / sc * kmPerUnit;
+  const nice = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500].reduce((a, v) => v <= kmAt ? v : a, 0.1);
+  const barPx = nice / kmPerUnit * sc;
+  o.push(`<line class="m-scale" x1="12" x2="${(12 + barPx).toFixed(1)}" y1="${H - 8}" y2="${H - 8}"/><text class="m-scale-lbl" x="${(16 + barPx).toFixed(1)}" y="${H - 4}">${nice} km</text>`);
+  o.push(`<text class="m-scale-lbl" x="${W - 10}" y="14" text-anchor="end">N ↑</text>`);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  pts.forEach(p => {
+    const X = px(p).toFixed(1), Y = py(p).toFixed(1);
+    if (p.home) o.push(`<rect class="m-home" x="${X - 5}" y="${Y - 5}" width="10" height="10" rx="2"/>`);
+    else o.push(`<circle class="m-spot" cx="${X}" cy="${Y}" r="5"/>`);
+    const right = px(p) < W * 0.66;
+    const name = p.name.length > 22 ? p.name.slice(0, 21) + '…' : p.name;
+    o.push(`<text class="m-lbl" x="${(px(p) + (right ? 9 : -9)).toFixed(1)}" y="${(py(p) + 4).toFixed(1)}" text-anchor="${right ? 'start' : 'end'}">${esc(name)}</text>`);
+  });
+  o.push('</svg>');
+  host.innerHTML = o.join('');
+  $('#spotMapSub').textContent = `square = ${S.loc.name}`;
+}
+
+/* ---------- Sheets ---------- */
+let lastFocus = null;
+function openSheet(title, body, focusSel) {
+  lastFocus = document.activeElement;
+  $('#sheetTitle').textContent = title;
+  $('#sheetBody').replaceChildren(body);
+  $('#sheetWrap').hidden = false;
+  setTimeout(() => { const f = focusSel ? $(focusSel) : $('#sheetClose'); f && f.focus(); }, 30);
+}
+function closeSheet() { $('#sheetWrap').hidden = true; $('#sheetBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+
+function openLocation() {
+  const body = h('div', { class: 'form' });
+  const list = h('div', { class: 'loc-list' }, PRESETS.map(p => h('button', { class: 'loc-opt', type: 'button', 'aria-pressed': String(S.loc.name === p.name), onclick: () => setLoc(p) },
+    h('span', { text: p.name }), h('small', { text: fmtCoord(p.lat, p.lon) }))));
+  body.append(h('p', { class: 'fine', text: 'Sun, moon and tide times are worked out for this location. Tides come from the nearest stations: Dhidhdhoo, Naifaru, Malé and Gan.' }), list);
+  body.append(h('div', { class: 'h2', text: 'Or set your own' }));
+  const name = h('input', { type: 'text', id: 'locNameIn', placeholder: 'e.g. Home island', maxlength: '40' });
+  const coord = h('input', { type: 'text', id: 'locCoordIn', placeholder: '6.0694, 73.2811 or a Google Maps link' });
+  const hint = h('span', { class: 'hint', text: 'Paste decimal coordinates, degrees-minutes-seconds or a Google Maps link.' });
+  coord.addEventListener('input', () => { const c = parseCoords(coord.value); hint.textContent = c ? fmtCoord(c.lat, c.lon) : (coord.value.trim() ? 'Can\'t read those coordinates yet.' : 'Paste decimal coordinates, degrees-minutes-seconds or a Google Maps link.'); hint.className = 'hint ' + (c ? 'ok' : coord.value.trim() ? 'err' : ''); });
+  body.append(h('div', { class: 'field' }, h('label', { for: 'locNameIn', text: 'Name' }), name),
+    h('div', { class: 'field' }, h('label', { for: 'locCoordIn', text: 'Coordinates' }), coord, hint, gpsButton(p => { coord.value = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`; if (!name.value.trim()) name.value = 'My location'; }, hint)),
+    h('button', { class: 'btn', type: 'button', text: 'Use this location', onclick: () => {
+      const c = parseCoords(coord.value);
+      if (!c) { hint.textContent = 'Enter coordinates first, for example 6.0694, 73.2811.'; hint.className = 'hint err'; coord.focus(); return; }
+      setLoc({ id: 'custom', name: name.value.trim() || 'My location', lat: c.lat, lon: c.lon });
+    } }));
+  openSheet('Location', body);
+}
+function setLoc(p) {
+  S.loc = { id: p.id, name: p.name, lat: p.lat, lon: p.lon };
+  lsSet('kandu.loc', S.loc);
+  closeSheet(); renderToday(); renderSpots();
+  toast('Location set to ' + p.name);
+}
+
+function openSpotForm() {
+  const f = h('form', { class: 'form', novalidate: true });
+  f.innerHTML = `
+    <div class="field"><label for="spName">Name</label><input type="text" id="spName" maxlength="60" placeholder="e.g. North kandu mouth" required></div>
+    <div class="field"><label for="spType">Type</label><select id="spType"></select></div>
+    <div class="field"><label for="spCoord">Coordinates</label><input type="text" id="spCoord" placeholder="4.1755, 73.5093 or a Google Maps link" required><span class="hint" id="spHint">Paste decimal coordinates, degrees-minutes-seconds or a Google Maps link.</span></div>
+    <div class="two"><div class="field"><label for="spDepth">Depth (m)</label><input type="number" id="spDepth" min="0" max="2000" step="1" inputmode="numeric" placeholder="Optional"></div></div>
+    <div class="field"><label for="spNotes">Notes</label><textarea id="spNotes" maxlength="500" placeholder="Bait that works, current direction, landmarks"></textarea></div>
+    <p class="hint err" id="spErr" hidden></p>
+    <button class="btn" type="button" id="spSave">Save spot</button>`;
+  const sel = f.querySelector('#spType');
+  for (const [k, v] of Object.entries(SPOT_TYPES)) sel.append(h('option', { value: k, text: v.label }));
+  const coord = f.querySelector('#spCoord'), hint = f.querySelector('#spHint');
+  const gb = gpsButton(p => { coord.value = `${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}`; }, hint);
+  if (gb) hint.after(gb);
+  coord.addEventListener('input', () => { const c = parseCoords(coord.value); hint.textContent = c ? fmtCoord(c.lat, c.lon) : (coord.value.trim() ? 'Can\'t read those coordinates yet.' : 'Paste decimal coordinates, degrees-minutes-seconds or a Google Maps link.'); hint.className = 'hint ' + (c ? 'ok' : coord.value.trim() ? 'err' : ''); });
+  f.addEventListener('submit', ev => ev.preventDefault());
+  f.querySelector('#spSave').addEventListener('click', async () => {
+    const err = f.querySelector('#spErr');
+    const name = f.querySelector('#spName').value.trim(), c = parseCoords(coord.value);
+    if (!name) { err.textContent = 'Give the spot a name.'; err.hidden = false; f.querySelector('#spName').focus(); return; }
+    if (!c) { err.textContent = 'Add coordinates, for example 4.1755, 73.5093.'; err.hidden = false; coord.focus(); return; }
+    const depth = parseFloat(f.querySelector('#spDepth').value);
+    const btn = f.querySelector('#spSave'); btn.disabled = true;
+    const ok = await Store.add('spots', { name, type: sel.value, lat: +c.lat.toFixed(6), lon: +c.lon.toFixed(6), depth: isFinite(depth) && depth > 0 ? Math.round(depth) : null, notes: f.querySelector('#spNotes').value.trim() });
+    btn.disabled = false;
+    if (ok) { closeSheet(); toast('Spot saved'); }
+  });
+  openSheet('Add spot', f, '#spName');
+}
+
+function localInputValue(ms) { const p = mvParts(ms); return `${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}`; }
+function conditionsAt(ms, lat, lon) {
+  const day = mvDayStart(ms), A = analyze(day, lat, lon), ts = tideStageAt(ms, lat);
+  const sol = A.sky.periods.find(p => ms >= p.start && ms <= p.end);
+  const ph = moonPhase(ms);
+  const slot = A.slots[clamp(Math.floor((ms - day) / (15 * MIN)), 0, 95)];
+  return { tide: ts.stage, tideH: +ts.h.toFixed(2), solunar: sol ? sol.kind : 'none', moon: phaseName(ph.phase), moonP: +ph.phase.toFixed(3), bite: Math.round(slot.score) };
+}
+function openCatchForm(spotId) {
+  const f = h('form', { class: 'form', novalidate: true });
+  f.innerHTML = `
+    <div class="field"><label for="ctSpecies">Species</label><select id="ctSpecies"></select></div>
+    <div class="field" id="ctOtherWrap" hidden><label for="ctOther">Species name</label><input type="text" id="ctOther" maxlength="40"></div>
+    <div class="two">
+      <div class="field"><label for="ctKg">Weight (kg)</label><input type="number" id="ctKg" min="0" max="500" step="0.1" inputmode="decimal" placeholder="Optional"></div>
+      <div class="field"><label for="ctCm">Length (cm)</label><input type="number" id="ctCm" min="0" max="500" step="1" inputmode="numeric" placeholder="Optional"></div>
+    </div>
+    <div class="field"><label for="ctWhen">When (Maldives time)</label><input type="datetime-local" id="ctWhen"></div>
+    <div class="field"><label for="ctSpot">Spot</label><select id="ctSpot"></select></div>
+    <div class="two">
+      <div class="field"><label for="ctMethod">Method</label><select id="ctMethod"></select></div>
+      <div class="field"><label for="ctBait">Bait or lure</label><input type="text" id="ctBait" maxlength="40" placeholder="e.g. Squid, jig 200 g"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="ctReleased"> Released</label>
+    <div class="field"><label for="ctNotes">Notes</label><textarea id="ctNotes" maxlength="500"></textarea></div>
+    <p class="hint err" id="ctErr" hidden></p>
+    <p class="fine">Tide stage, solunar period and moon phase are recorded with the catch automatically.</p>
+    <button class="btn" type="button" id="ctSave">Save catch</button>`;
+  const sp = f.querySelector('#ctSpecies');
+  for (const s of SPECIES) sp.append(h('option', { value: s, text: s }));
+  sp.append(h('option', { value: '__other', text: 'Other…' }));
+  sp.addEventListener('change', () => { f.querySelector('#ctOtherWrap').hidden = sp.value !== '__other'; });
+  const spotSel = f.querySelector('#ctSpot');
+  spotSel.append(h('option', { value: '', text: 'No saved spot' }));
+  for (const s of S.spots) spotSel.append(h('option', { value: s.id, text: s.name }));
+  if (spotId) spotSel.value = spotId;
+  const ms = f.querySelector('#ctMethod');
+  for (const m of METHODS) ms.append(h('option', { value: m, text: m }));
+  f.querySelector('#ctWhen').value = localInputValue(Date.now());
+  f.addEventListener('submit', ev => ev.preventDefault());
+  f.querySelector('#ctSave').addEventListener('click', async () => {
+    const err = f.querySelector('#ctErr');
+    const species = sp.value === '__other' ? f.querySelector('#ctOther').value.trim() : sp.value;
+    if (!species) { err.textContent = 'Enter the species name.'; err.hidden = false; f.querySelector('#ctOther').focus(); return; }
+    const wv = f.querySelector('#ctWhen').value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!wv) { err.textContent = 'Set the date and time of the catch.'; err.hidden = false; return; }
+    const at = mvMs(+wv[1], +wv[2], +wv[3], +wv[4], +wv[5]);
+    const spot = S.spots.find(s => s.id === spotSel.value);
+    const where = spot || S.loc;
+    const kg = parseFloat(f.querySelector('#ctKg').value), cm = parseFloat(f.querySelector('#ctCm').value);
+    const btn = f.querySelector('#ctSave'); btn.disabled = true;
+    const ok = await Store.add('catches', {
+      species, at, kg: isFinite(kg) && kg > 0 ? +kg.toFixed(1) : null, cm: isFinite(cm) && cm > 0 ? Math.round(cm) : null,
+      spotId: spot ? spot.id : null, spotName: spot ? spot.name : null, method: ms.value, bait: f.querySelector('#ctBait').value.trim(),
+      released: f.querySelector('#ctReleased').checked, notes: f.querySelector('#ctNotes').value.trim(),
+      cond: conditionsAt(at, where.lat, where.lon),
+    });
+    btn.disabled = false;
+    if (ok) { closeSheet(); toast('Catch logged'); }
+  });
+  openSheet('Log a catch', f, '#ctSpecies');
+}
+
+/* ---------- Log ---------- */
+function topOf(arr) {
+  const m = new Map(); for (const v of arr) if (v) m.set(v, (m.get(v) || 0) + 1);
+  let best = null, n = 0; for (const [k, c] of m) if (c > n) { best = k; n = c; }
+  return { key: best, n };
+}
+function catchStats() {
+  const C = S.catches;
+  const kg = C.reduce((a, c) => a + (c.kg || 0), 0);
+  const sp = topOf(C.map(c => c.species));
+  const td = topOf(C.map(c => c.cond && c.cond.tide));
+  const inSol = C.filter(c => c.cond && c.cond.solunar !== 'none').length;
+  return { kg, topSpecies: sp.key ? `${sp.key} (${sp.n})` : '—', bestTide: td.key ? `${td.key.toLowerCase()} (${td.n})` : '—', inSol };
+}
+function renderBackup() {
+  const card = $('#backupCard');
+  if (!card) return;
+  card.hidden = !(STANDALONE && S.ready && S.mode !== 'cloud');
+}
+function exportBackup() {
+  const data = { app: 'kandu', version: 1, exportedAt: new Date().toISOString(), location: S.loc, spots: S.spots, catches: S.catches };
+  const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+  const p = mvParts(Date.now()), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `kandu-backup-${p.y}-${pad(p.m)}-${pad(p.d)}.json`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`Backup saved: ${S.spots.length} spots, ${S.catches.length} catches`);
+}
+function importBackup(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    let d;
+    try { d = JSON.parse(r.result); } catch (e) { toast('That file isn\'t a Kandu backup.'); return; }
+    if (!d || d.app !== 'kandu' || !Array.isArray(d.spots) || !Array.isArray(d.catches)) { toast('That file isn\'t a Kandu backup.'); return; }
+    const haveS = new Set(S.spots.map(s => s.id)), haveC = new Set(S.catches.map(c => c.id));
+    const ns = d.spots.filter(s => s && s.id && !haveS.has(s.id) && isFinite(s.lat) && isFinite(s.lon) && s.name);
+    const nc = d.catches.filter(c => c && c.id && !haveC.has(c.id) && isFinite(c.at) && c.species);
+    S.spots.push(...ns); S.catches.push(...nc); S.catches.sort((a, b) => b.at - a.at);
+    lsSet('kandu.spots', S.spots); lsSet('kandu.catches', S.catches);
+    renderSpots(); renderLog();
+    toast(`Restored ${ns.length} spots and ${nc.length} catches`);
+  };
+  r.readAsText(file);
+}
+function renderLog() {
+  storageNote($('#logNote'));
+  renderBackup();
+  const list = $('#catchList');
+  if (!S.ready) { list.replaceChildren(); $('#statsCard').hidden = true; return; }
+  if (!S.catches.length) {
+    $('#statsCard').hidden = true;
+    list.replaceChildren(h('div', { class: 'empty' },
+      h('h3', { text: 'No catches logged yet' }),
+      h('p', { text: 'Log each fish with its spot and method. Kandu records the tide stage, solunar period and moon phase at that moment, so after a few trips you can see which conditions work for you.' }),
+      h('button', { class: 'btn btn-sm', type: 'button', text: 'Log your first catch', onclick: () => openCatchForm() })));
+    return;
+  }
+  const st = catchStats(), C = S.catches;
+  $('#statsCard').hidden = false;
+  const stat = (v, l) => h('div', { class: 'stat' }, h('b', { text: v }), h('span', { text: l }));
+  $('#stats').replaceChildren(
+    stat(String(C.length), 'catches'),
+    stat(st.kg ? `${st.kg.toFixed(1)} kg` : '—', 'total weight'),
+    stat(st.topSpecies, 'top species'),
+    stat(C.length >= 3 ? st.bestTide : 'Need 3+', 'best tide stage'),
+    stat(`${st.inSol} of ${C.length}`, 'in a solunar period'));
+  list.replaceChildren(...C.map(c => {
+    const spot = c.spotId && S.spots.find(s => s.id === c.spotId);
+    const size = [c.kg ? `${c.kg} kg` : null, c.cm ? `${c.cm} cm` : null].filter(Boolean).join(' · ');
+    const cd = c.cond || {};
+    return h('article', { class: 'item' },
+      h('div', { class: 'item-top' }, h('span', { class: 'item-title', text: c.species }), size ? h('span', { class: 'mono', text: size }) : null),
+      h('div', { class: 'meta' }, h('span', { class: 'mono', text: `${fmtDate(c.at)} ${fmtTime(c.at)}` }), h('span', { text: spot ? spot.name : (c.spotName || 'No spot') }), c.method ? h('span', { text: c.method }) : null, c.bait ? h('span', { text: c.bait }) : null, c.released ? h('span', { text: 'Released' }) : null),
+      h('div', { class: 'chips' },
+        cd.tide ? h('span', { class: 'chip', text: `${cd.tide} tide` }) : null,
+        cd.solunar && cd.solunar !== 'none' ? h('span', { class: 'chip', text: `${cd.solunar[0].toUpperCase()}${cd.solunar.slice(1)} period` }) : null,
+        cd.moon ? h('span', { class: 'chip', text: cd.moon }) : null),
+      c.notes ? h('p', { text: c.notes }) : null,
+      h('div', { class: 'row' }, confirmButton('Delete', () => Store.remove('catches', c.id))));
+  }));
+}
+
+/* ---------- Tabs and wiring ---------- */
+function setTab(t) {
+  S.tab = t;
+  for (const b of document.querySelectorAll('.tab-btn')) b.setAttribute('aria-selected', String(b.dataset.tab === t));
+  for (const id of ['today', 'spots', 'log']) $('#tab-' + id).hidden = id !== t;
+  if (t === 'today') renderToday(); else if (t === 'spots') renderSpots(); else renderLog();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+$('#prevDay').addEventListener('click', () => { S.day -= DAY; renderToday(); });
+$('#nextDay').addEventListener('click', () => { S.day += DAY; renderToday(); });
+$('#todayBtn').addEventListener('click', () => { S.day = mvDayStart(Date.now()); renderToday(); });
+$('#locBtn').addEventListener('click', openLocation);
+$('#addSpotBtn').addEventListener('click', () => openSpotForm());
+$('#addCatchBtn').addEventListener('click', () => openCatchForm());
+$('#sheetClose').addEventListener('click', closeSheet);
+$('#sheetWrap').addEventListener('click', e => { if (e.target === $('#sheetWrap')) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheetWrap').hidden) closeSheet(); });
+$('#planBtn').addEventListener('click', askPlan);
+$('#planStop').addEventListener('click', () => planCtl && planCtl.abort());
+let rzT; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (S.tab === 'today') renderChart(currentAnalysis()); else if (S.tab === 'spots' && S.spots.length) renderSpotMap(); }, 150); });
+setInterval(() => { if (S.tab === 'today' && isToday(S.day)) { const A = currentAnalysis(); renderNow(A); renderChart(A); } }, 60 * 1000);
+
+renderToday();
+renderSpots();
+renderLog();
+Store.init();
+if (STANDALONE) {
+  const exp = $('#exportBtn'), imp = $('#importFile');
+  if (exp) exp.addEventListener('click', exportBackup);
+  if (imp) imp.addEventListener('change', () => { if (imp.files[0]) importBackup(imp.files[0]); imp.value = ''; });
+  const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const tip = $('#installTip');
+  if (tip && !installed && !lsGet('kandu.tipDone')) {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    $('#installText').textContent = ios ? 'Open this page in Safari, tap the Share button, then "Add to Home Screen". Kandu then opens like an app and works offline at sea.' : 'Open your browser menu (⋮) and tap "Install app" or "Add to Home screen". Kandu then opens like an app and works offline at sea.';
+    tip.hidden = false;
+    $('#installDismiss').addEventListener('click', () => { tip.hidden = true; lsSet('kandu.tipDone', true); });
+  }
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+}
+(async () => {
+  try { sampleFn = (window.claude && typeof window.claude.use === 'function') ? await window.claude.use('sample') : null; } catch (e) { sampleFn = null; }
+  renderPlanArea();
+})();
+</script>
+</body>
+</html>
